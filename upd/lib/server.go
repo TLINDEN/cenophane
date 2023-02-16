@@ -21,6 +21,7 @@ import (
 	"archive/zip"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	//"github.com/gin-gonic/gin/binding"
 	"github.com/google/uuid"
 	"github.com/tlinden/up/upd/cfg"
 	"io"
@@ -53,6 +54,11 @@ func NormalizeFilename(file string) string {
 	return Ts() + r.ReplaceAllString(file, "")
 }
 
+// Binding from JSON
+type Meta struct {
+	Expire string `form:"expire"`
+}
+
 func Runserver(cfg *cfg.Config, args []string) error {
 	dst := cfg.StorageDir
 	router := gin.Default()
@@ -77,6 +83,12 @@ func Runserver(cfg *cfg.Config, args []string) error {
 			id := uuid.NewString()
 
 			os.MkdirAll(filepath.Join(dst, id), os.ModePerm)
+
+			var formdata Meta
+			if err := c.ShouldBind(&formdata); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+				return
+			}
 
 			form, _ := c.MultipartForm()
 			files := form.File["upload[]"]
@@ -137,6 +149,7 @@ func Runserver(cfg *cfg.Config, args []string) error {
 			})
 
 			Log("Now serving %s from %s/%s", returnUrl, dst, id)
+			Log("Expire set to: %s", formdata.Expire)
 		})
 
 		api.GET("/getfile/:id/:file", func(c *gin.Context) {
