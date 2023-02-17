@@ -86,6 +86,7 @@ func Execute() {
 	rootCmd.PersistentFlags().StringVarP(&conf.StorageDir, "storagedir", "s", "/tmp", "storage directory for uploaded files")
 	rootCmd.PersistentFlags().StringVarP(&conf.ApiPrefix, "apiprefix", "a", "/api", "API endpoint path")
 	rootCmd.PersistentFlags().StringVarP(&conf.Url, "url", "u", "", "HTTP endpoint w/o path")
+	rootCmd.PersistentFlags().StringVarP(&conf.DbFile, "dbfile", "D", "/tmp/uploads.db", "Bold database file to use")
 
 	err := rootCmd.Execute()
 	if err != nil {

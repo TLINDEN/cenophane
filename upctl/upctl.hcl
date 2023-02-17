@@ -1,1 +1,1 @@
-endpoint = "http://daemon.de/api"
+endpoint = "http://localhost:8080/api"

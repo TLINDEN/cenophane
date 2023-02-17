@@ -31,6 +31,7 @@ type Config struct {
 	Listen     string
 	StorageDir string
 	Url        string
+	DbFile     string
 }
 
 func Getversion() string {

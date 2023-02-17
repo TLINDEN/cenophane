@@ -1,2 +1,17 @@
 # up
 Simple standalone file upload server with api and cli
+
+## TODO
+
+- decouple db and http code in Runserver()
+- store ts
+- implement goroutine to expire after 1d, 10m etc
+- use bolt db to retrieve list of items to expire
+- return a meaningful  message if a file has expired,  not just a 404,
+  that is: do  remove the file when it expires  but not the associated
+  db entry.
+- also serve a html upload page
+- add api version in path
+- add auth options (access key, users, roles, oauth2)
+- add metrics
+- add upctl command to remove a file
