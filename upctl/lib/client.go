@@ -48,6 +48,10 @@ func Runclient(cfg *cfg.Config, args []string) error {
 		postfiles[filepath.Base(file)] = file
 	}
 
+	// FIXME: doesn't set name=upload[]
+	//        see https://github.com/go-resty/resty/issues/617
+	// however, this works:
+	// curl -X POST localhost:8080/api/putfile -F "upload[]=@xxx" -F "upload[]=@yyy" -H "Content-Type: multipart/form-data"
 	resp, err := client.R().
 		SetFiles(postfiles).
 		SetFormData(map[string]string{"expire": "1d"}).

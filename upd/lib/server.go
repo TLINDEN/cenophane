@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	//"github.com/gin-gonic/gin/binding"
-	"encoding/json"
-	"github.com/google/uuid"
+	//"encoding/json"
+	//"github.com/google/uuid"
 	"github.com/tlinden/up/upd/cfg"
 	bolt "go.etcd.io/bbolt"
 	"io"
@@ -31,7 +31,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
+	//"strings"
 	"time"
 )
 
@@ -39,6 +39,20 @@ type Result struct {
 	success bool
 	url     string
 	error   string
+}
+
+// Binding from JSON, data coming from user, not tainted
+type Meta struct {
+	Expire string `form:"expire"`
+}
+
+// stores 1 upload object, gets into db
+type Upload struct {
+	Id       string    `json:"id"`
+	Expire   string    `json:"expire"`
+	File     string    `json:"file"`    // final filename (visible to the downloader)
+	Members  []string  `json:"members"` // contains multiple files, so File is an archive
+	Uploaded time.Time `json:"uploaded"`
 }
 
 func Log(format string, values ...any) {
@@ -56,17 +70,6 @@ func NormalizeFilename(file string) string {
 	return Ts() + r.ReplaceAllString(file, "")
 }
 
-// Binding from JSON, data coming from user, not tainted
-type Meta struct {
-	Expire string `form:"expire"`
-}
-
-type DbEntry struct {
-	Id     string `json:"id"`
-	Expire string `json:"expire"`
-	File   string `json:"file"`
-}
-
 func Runserver(cfg *cfg.Config, args []string) error {
 	dst := cfg.StorageDir
 	router := gin.Default()
@@ -79,123 +82,19 @@ func Runserver(cfg *cfg.Config, args []string) error {
 	}
 	defer db.Close()
 
-	// FIXME: put these beast into their own funcs!!!!!!!
 	{
 		api.POST("/putfile", func(c *gin.Context) {
-			// supports upload of multiple files with:
-			//
-			// curl -X POST localhost:8080/putfile \
-			//   -F "upload[]=@/home/scip/2023-02-06_10-51.png" \
-			//   -F "upload[]=@/home/scip/pgstat.png" \
-			//   -H "Content-Type: multipart/form-data"
-			//
-			// If multiple files are  uploaded, they are zipped, otherwise
-			// the  file is being stored  as is.
-			//
-			// Returns the  name of the uploaded file.
-			//
-			// FIXME: normalize or rename filename of single file to avoid dumb file names
-			id := uuid.NewString()
+			uri, err := Putfile(c, cfg, db)
 
-			os.MkdirAll(filepath.Join(dst, id), os.ModePerm)
-
-			var formdata Meta
-			if err := c.ShouldBind(&formdata); err != nil {
+			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-				return
-			}
-
-			form, _ := c.MultipartForm()
-			files := form.File["upload[]"]
-			uploaded := []string{}
-
-			for _, file := range files {
-				filename := NormalizeFilename(filepath.Base(file.Filename))
-				path := filepath.Join(dst, id, filename)
-				uploaded = append(uploaded, filename)
-				Log("Received: %s => %s/%s", file.Filename, id, filename)
-
-				if err := c.SaveUploadedFile(file, path); err != nil {
-					c.JSON(http.StatusBadRequest, gin.H{
-						"code":    http.StatusOK,
-						"message": "upload file err: " + err.Error(),
-						"success": false,
-					})
-
-					cleanup(filepath.Join(dst, id))
-
-					return
-				}
-			}
-
-			var returnUrl string
-			entry := &DbEntry{Id: id, Expire: formdata.Expire}
-
-			if len(uploaded) == 1 {
-				returnUrl = cfg.Url + cfg.ApiPrefix + "/getfile/" + id + "/" + uploaded[0]
-				entry.File = uploaded[0]
 			} else {
-				zipfile := Ts() + "data.zip"
-
-				if err := zipSource(filepath.Join(dst, id), filepath.Join(dst, id, zipfile)); err != nil {
-					c.JSON(http.StatusBadRequest, gin.H{
-						"code":    http.StatusBadRequest,
-						"message": "upload file err: " + err.Error(),
-						"success": false,
-					})
-
-					cleanup(filepath.Join(dst, id))
-				}
-
-				returnUrl = strings.Join([]string{cfg.Url + cfg.ApiPrefix, "getfile", id, zipfile}, "/")
-				entry.File = zipfile
-
-				// clean up after us
-				go func() {
-					for _, file := range uploaded {
-						if err := os.Remove(filepath.Join(dst, id, file)); err != nil {
-							Log("ERROR: unable to delete %s: %s", file, err)
-						}
-					}
-				}()
-
-			}
-
-			c.JSON(http.StatusOK, gin.H{
-				"code":    http.StatusOK,
-				"message": returnUrl,
-				"success": true,
-			})
-
-			Log("Now serving %s from %s/%s", returnUrl, dst, id)
-			Log("Expire set to: %s", formdata.Expire)
-
-			go func() {
-				err := db.Update(func(tx *bolt.Tx) error {
-					b, err := tx.CreateBucketIfNotExists([]byte("uploads"))
-					if err != nil {
-						return fmt.Errorf("create bucket: %s", err)
-					}
-
-					jsonentry, err := json.Marshal(entry)
-					if err != nil {
-						return fmt.Errorf("json marshalling failure: %s", err)
-					}
-
-					err = b.Put([]byte(id), []byte(jsonentry))
-					if err != nil {
-						return fmt.Errorf("insert data: %s", err)
-					}
-
-					// results in:
-					// bbolt get /tmp/uploads.db uploads fb242922-86cb-43a8-92bc-b027c35f0586
-					// {"id":"fb242922-86cb-43a8-92bc-b027c35f0586","expire":"1d","file":"2023-02-17-13-09-data.zip"}
-					return nil
+				c.JSON(http.StatusOK, gin.H{
+					"code":    http.StatusOK,
+					"message": uri,
+					"success": true,
 				})
-				if err != nil {
-					Log("DB error: %s", err.Error())
-				}
-			}()
+			}
 		})
 
 		api.GET("/getfile/:id/:file", func(c *gin.Context) {
