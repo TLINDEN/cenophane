@@ -21,9 +21,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-resty/resty/v2"
+	"github.com/imroc/req/v3"
 	"github.com/tlinden/up/upctl/cfg"
-	"path/filepath"
+	//"path/filepath"
+	"time"
 )
 
 type Response struct {
@@ -37,40 +38,31 @@ func Runclient(cfg *cfg.Config, args []string) error {
 		return errors.New("No files specified to upload.")
 	}
 
-	client := resty.New()
-	client.SetDebug(cfg.Debug)
+	client := req.C()
+	if cfg.Debug {
+		client.DevMode()
+	}
 
 	url := cfg.Endpoint + "/putfile"
 
-	postfiles := make(map[string]string)
-
+	rq := client.R()
 	for _, file := range args {
-		postfiles[filepath.Base(file)] = file
+		rq.SetFile("upload[]", file)
 	}
 
-	// FIXME: doesn't set name=upload[]
-	//        see https://github.com/go-resty/resty/issues/617
-	// however, this works:
-	// curl -X POST localhost:8080/api/putfile -F "upload[]=@xxx" -F "upload[]=@yyy" -H "Content-Type: multipart/form-data"
-	resp, err := client.R().
-		SetFiles(postfiles).
-		SetFormData(map[string]string{"expire": "1d"}).
+	resp, err := rq.
+		SetFormData(map[string]string{
+			"expire": "1d",
+		}).
+		SetUploadCallbackWithInterval(func(info req.UploadInfo) {
+			fmt.Printf("\r%q uploaded %.2f%%", info.FileName, float64(info.UploadedSize)/float64(info.FileSize)*100.0)
+		}, 10*time.Millisecond).
 		Post(url)
+
+	fmt.Println("")
 
 	if err != nil {
 		return err
-	}
-
-	if cfg.Debug {
-		fmt.Println("Response Info:")
-		fmt.Println("  Error      :", err)
-		fmt.Println("  Status Code:", resp.StatusCode())
-		fmt.Println("  Status     :", resp.Status())
-		fmt.Println("  Proto      :", resp.Proto())
-		fmt.Println("  Time       :", resp.Time())
-		fmt.Println("  Received At:", resp.ReceivedAt())
-		fmt.Println("  Body       :\n", resp)
-		fmt.Println()
 	}
 
 	r := Response{}
@@ -78,6 +70,13 @@ func Runclient(cfg *cfg.Config, args []string) error {
 	json.Unmarshal([]byte(resp.String()), &r)
 
 	fmt.Println(r)
+
+	if cfg.Debug {
+		trace := resp.TraceInfo()  // Use `resp.Request.TraceInfo()` to avoid unnecessary struct copy in production.
+		fmt.Println(trace.Blame()) // Print out exactly where the http request is slowing down.
+		fmt.Println("----------")
+		fmt.Println(trace)
+	}
 
 	return nil
 }

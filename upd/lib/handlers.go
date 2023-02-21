@@ -58,15 +58,10 @@ func Putfile(c *gin.Context, cfg *cfg.Config, db *bolt.DB) (string, error) {
 
 	// fetch auxiliary form data
 	form, _ := c.MultipartForm()
-	if err := c.ShouldBind(&formdata); err != nil {
-		return "", err
-	}
+
+	entry := &Upload{Id: id, Uploaded: time.Now()}
 
 	// init upload obj
-	entry := &Upload{Id: id, Uploaded: time.Now(), Expire: formdata.Expire}
-	if len(entry.Expire) == 0 {
-		entry.Expire = "asap"
-	}
 
 	// retrieve files, if any
 	files := form.File["upload[]"]
@@ -82,14 +77,31 @@ func Putfile(c *gin.Context, cfg *cfg.Config, db *bolt.DB) (string, error) {
 		}
 	}
 
+	if err := c.ShouldBind(&formdata); err != nil {
+		return "", err
+	}
+	if len(formdata.Expire) == 0 {
+		entry.Expire = "asap"
+	} else {
+		entry.Expire = formdata.Expire // FIXME: validate
+	}
+
 	if len(entry.Members) == 1 {
 		returnUrl = cfg.Url + cfg.ApiPrefix + "/getfile/" + id + "/" + entry.Members[0]
 		entry.File = entry.Members[0]
 	} else {
 		zipfile := Ts() + "data.zip"
+		tmpzip := filepath.Join(cfg.StorageDir, zipfile)
+		finalzip := filepath.Join(cfg.StorageDir, id, zipfile)
+		iddir := filepath.Join(cfg.StorageDir, id)
 
-		if err := zipSource(filepath.Join(cfg.StorageDir, id), filepath.Join(cfg.StorageDir, id, zipfile)); err != nil {
-			cleanup(filepath.Join(cfg.StorageDir, id))
+		if err := zipSource(iddir, tmpzip); err != nil {
+			cleanup(iddir)
+			return "", err
+		}
+
+		if err := os.Rename(tmpzip, finalzip); err != nil {
+			cleanup(iddir)
 			return "", err
 		}
 
