@@ -15,3 +15,5 @@ Simple standalone file upload server with api and cli
 - add auth options (access key, users, roles, oauth2)
 - add metrics
 - add upctl command to remove a file
+- upd: add short  uuid to files, in case multiple  files with the same
+  name are being uploaded

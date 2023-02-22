@@ -19,11 +19,12 @@ package lib
 
 import (
 	"encoding/json"
-	"errors"
+	//"errors"
 	"fmt"
 	"github.com/imroc/req/v3"
 	"github.com/tlinden/up/upctl/cfg"
-	//"path/filepath"
+	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -34,10 +35,6 @@ type Response struct {
 }
 
 func Runclient(c *cfg.Config, args []string) error {
-	if len(args) == 0 {
-		return errors.New("No files specified to upload.")
-	}
-
 	client := req.C()
 	if c.Debug {
 		client.DevMode()
@@ -49,7 +46,31 @@ func Runclient(c *cfg.Config, args []string) error {
 
 	rq := client.R()
 	for _, file := range args {
-		rq.SetFile("upload[]", file)
+		info, err := os.Stat(file)
+
+		if os.IsNotExist(err) {
+			return err
+		}
+
+		if info.IsDir() {
+			err := filepath.Walk(file, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+
+				if !info.IsDir() {
+					rq.SetFile("upload[]", path)
+				}
+				return nil
+			})
+
+			if err != nil {
+				return err
+			}
+		} else {
+			rq.SetFile("upload[]", file)
+		}
+
 	}
 
 	if c.Retries > 0 {
@@ -73,6 +94,7 @@ func Runclient(c *cfg.Config, args []string) error {
 		}).
 		SetUploadCallbackWithInterval(func(info req.UploadInfo) {
 			fmt.Printf("\r%q uploaded %.2f%%", info.FileName, float64(info.UploadedSize)/float64(info.FileSize)*100.0)
+			fmt.Println()
 		}, 10*time.Millisecond).
 		Post(url)
 

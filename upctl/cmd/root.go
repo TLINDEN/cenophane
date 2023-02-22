@@ -68,6 +68,10 @@ func Execute() {
 				return completion(cmd, ShowCompletion)
 			}
 
+			if len(args) == 0 {
+				return errors.New("No files specified to upload!")
+			}
+
 			// errors at this stage do not cause the usage to be shown
 			cmd.SilenceUsage = true
 
