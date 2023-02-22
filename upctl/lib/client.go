@@ -33,21 +33,38 @@ type Response struct {
 	Message string `json:"message"`
 }
 
-func Runclient(cfg *cfg.Config, args []string) error {
+func Runclient(c *cfg.Config, args []string) error {
 	if len(args) == 0 {
 		return errors.New("No files specified to upload.")
 	}
 
 	client := req.C()
-	if cfg.Debug {
+	if c.Debug {
 		client.DevMode()
 	}
 
-	url := cfg.Endpoint + "/putfile"
+	client.SetUserAgent("upctl-" + cfg.VERSION)
+
+	url := c.Endpoint + "/putfile"
 
 	rq := client.R()
 	for _, file := range args {
 		rq.SetFile("upload[]", file)
+	}
+
+	if c.Retries > 0 {
+		// Enable retry and set the maximum retry count.
+		rq.SetRetryCount(c.Retries).
+			//  Set  the  retry  sleep   interval  with  a  commonly  used
+			//   algorithm:  capped   exponential   backoff  with   jitter
+			// (https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/).
+			SetRetryBackoffInterval(1*time.Second, 5*time.Second).
+			AddRetryHook(func(resp *req.Response, err error) {
+				req := resp.Request.RawRequest
+				if c.Debug {
+					fmt.Println("Retrying endpoint request:", req.Method, req.URL)
+				}
+			})
 	}
 
 	resp, err := rq.
@@ -71,7 +88,7 @@ func Runclient(cfg *cfg.Config, args []string) error {
 
 	fmt.Println(r)
 
-	if cfg.Debug {
+	if c.Debug {
 		trace := resp.TraceInfo()  // Use `resp.Request.TraceInfo()` to avoid unnecessary struct copy in production.
 		fmt.Println(trace.Blame()) // Print out exactly where the http request is slowing down.
 		fmt.Println("----------")

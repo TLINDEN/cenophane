@@ -28,6 +28,7 @@ var VERSION string // maintained by -x
 type Config struct {
 	Endpoint string
 	Debug    bool
+	Retries  int
 }
 
 func Getversion() string {

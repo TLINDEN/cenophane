@@ -68,9 +68,9 @@ func Execute() {
 				return completion(cmd, ShowCompletion)
 			}
 
-			// conf.ApplyDefaults()
+			// errors at this stage do not cause the usage to be shown
+			cmd.SilenceUsage = true
 
-			// actual execution starts here
 			return lib.Runclient(&conf, args)
 		},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -82,6 +82,7 @@ func Execute() {
 	rootCmd.PersistentFlags().BoolVarP(&ShowVersion, "version", "v", false, "Print program version")
 	rootCmd.PersistentFlags().BoolVarP(&conf.Debug, "debug", "d", false, "Enable debugging")
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "custom config file")
+	rootCmd.PersistentFlags().IntVarP(&conf.Retries, "retries", "r", 3, "How often shall we retry to access our endpoint")
 	rootCmd.PersistentFlags().StringVarP(&conf.Endpoint, "endpoint", "e", "http://localhost:8080/api", "upload api endpoint url")
 
 	err := rootCmd.Execute()
