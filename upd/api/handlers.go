@@ -15,14 +15,15 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-package lib
+package api
 
 import (
 	//"archive/zip"
 	"fmt"
-	"github.com/gin-gonic/gin"
+	//"github.com/gin-gonic/gin"
 	//"github.com/gin-gonic/gin/binding"
 	"encoding/json"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/tlinden/up/upd/cfg"
 	bolt "go.etcd.io/bbolt"
@@ -35,7 +36,7 @@ import (
 	"time"
 )
 
-func Putfile(c *gin.Context, cfg *cfg.Config, db *bolt.DB) (string, error) {
+func Putfile(c *fiber.Ctx, cfg *cfg.Config, db *bolt.DB) (string, error) {
 	// supports upload of multiple files with:
 	//
 	// curl -X POST localhost:8080/putfile \
@@ -57,7 +58,11 @@ func Putfile(c *gin.Context, cfg *cfg.Config, db *bolt.DB) (string, error) {
 	os.MkdirAll(filepath.Join(cfg.StorageDir, id), os.ModePerm)
 
 	// fetch auxiliary form data
-	form, _ := c.MultipartForm()
+	form, err := c.MultipartForm()
+	if err != nil {
+		Log("multipart error %s", err.Error())
+		return "", err
+	}
 
 	entry := &Upload{Id: id, Uploaded: time.Now()}
 
@@ -71,15 +76,17 @@ func Putfile(c *gin.Context, cfg *cfg.Config, db *bolt.DB) (string, error) {
 		entry.Members = append(entry.Members, filename)
 		Log("Received: %s => %s/%s", file.Filename, id, filename)
 
-		if err := c.SaveUploadedFile(file, path); err != nil {
+		if err := c.SaveFile(file, path); err != nil {
 			cleanup(filepath.Join(cfg.StorageDir, id))
 			return "", err
 		}
 	}
 
-	if err := c.ShouldBind(&formdata); err != nil {
+	if err := c.BodyParser(&formdata); err != nil {
+		Log("bodyparser error %s", err.Error())
 		return "", err
 	}
+
 	if len(formdata.Expire) == 0 {
 		entry.Expire = "asap"
 	} else {
@@ -95,8 +102,9 @@ func Putfile(c *gin.Context, cfg *cfg.Config, db *bolt.DB) (string, error) {
 		finalzip := filepath.Join(cfg.StorageDir, id, zipfile)
 		iddir := filepath.Join(cfg.StorageDir, id)
 
-		if err := zipSource(iddir, tmpzip); err != nil {
+		if err := ZipSource(iddir, tmpzip); err != nil {
 			cleanup(iddir)
+			Log("zip error")
 			return "", err
 		}
 
@@ -105,7 +113,7 @@ func Putfile(c *gin.Context, cfg *cfg.Config, db *bolt.DB) (string, error) {
 			return "", err
 		}
 
-		returnUrl = strings.Join([]string{cfg.Url + cfg.ApiPrefix, "getfile", id, zipfile}, "/")
+		returnUrl = strings.Join([]string{cfg.Url + cfg.ApiPrefix + ApiVersion, "file/get", id, zipfile}, "/")
 		entry.File = zipfile
 
 		// clean up after us

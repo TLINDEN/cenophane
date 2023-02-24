@@ -11,9 +11,10 @@ Simple standalone file upload server with api and cli
   that is: do  remove the file when it expires  but not the associated
   db entry.
 - also serve a html upload page
-- add api version in path
 - add auth options (access key, users, roles, oauth2)
 - add metrics
 - add upctl command to remove a file
 - upd: add short  uuid to files, in case multiple  files with the same
   name are being uploaded
+- use global map of api endpoints like /file/get/ etc
+- use separate group for /file/

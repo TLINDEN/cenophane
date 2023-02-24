@@ -34,6 +34,8 @@ type Response struct {
 	Message string `json:"message"`
 }
 
+const ApiVersion string = "/v1"
+
 func Runclient(c *cfg.Config, args []string) error {
 	client := req.C()
 	if c.Debug {
@@ -42,7 +44,7 @@ func Runclient(c *cfg.Config, args []string) error {
 
 	client.SetUserAgent("upctl-" + cfg.VERSION)
 
-	url := c.Endpoint + "/putfile"
+	url := c.Endpoint + ApiVersion + "/file/put"
 
 	rq := client.R()
 	for _, file := range args {

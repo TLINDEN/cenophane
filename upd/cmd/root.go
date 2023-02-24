@@ -22,8 +22,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"github.com/tlinden/up/upd/api"
 	"github.com/tlinden/up/upd/cfg"
-	"github.com/tlinden/up/upd/lib"
 	"os"
 	"strings"
 )
@@ -71,7 +71,7 @@ func Execute() {
 			conf.ApplyDefaults()
 
 			// actual execution starts here
-			return lib.Runserver(&conf, args)
+			return api.Runserver(&conf, args)
 		},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return initConfig(cmd)
