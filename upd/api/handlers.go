@@ -18,25 +18,18 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package api
 
 import (
-	//"archive/zip"
-	"fmt"
-	//"github.com/gin-gonic/gin"
-	//"github.com/gin-gonic/gin/binding"
-	"encoding/json"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/tlinden/up/upd/cfg"
 	bolt "go.etcd.io/bbolt"
-	//"io"
-	// "net/http"
+
 	"os"
 	"path/filepath"
-	//"regexp"
 	"strings"
 	"time"
 )
 
-func Putfile(c *fiber.Ctx, cfg *cfg.Config, db *bolt.DB) (string, error) {
+func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *bolt.DB) (string, error) {
 	// supports upload of multiple files with:
 	//
 	// curl -X POST localhost:8080/putfile \
@@ -94,9 +87,10 @@ func Putfile(c *fiber.Ctx, cfg *cfg.Config, db *bolt.DB) (string, error) {
 	}
 
 	if len(entry.Members) == 1 {
-		returnUrl = cfg.Url + cfg.ApiPrefix + "/getfile/" + id + "/" + entry.Members[0]
+		returnUrl = strings.Join([]string{cfg.Url + cfg.ApiPrefix + ApiVersion, "file", id, entry.Members[0]}, "/")
 		entry.File = entry.Members[0]
 	} else {
+		// FIXME => func!
 		zipfile := Ts() + "data.zip"
 		tmpzip := filepath.Join(cfg.StorageDir, zipfile)
 		finalzip := filepath.Join(cfg.StorageDir, id, zipfile)
@@ -113,7 +107,7 @@ func Putfile(c *fiber.Ctx, cfg *cfg.Config, db *bolt.DB) (string, error) {
 			return "", err
 		}
 
-		returnUrl = strings.Join([]string{cfg.Url + cfg.ApiPrefix + ApiVersion, "file/get", id, zipfile}, "/")
+		returnUrl = strings.Join([]string{cfg.Url + cfg.ApiPrefix + ApiVersion, "file", id, zipfile}, "/")
 		entry.File = zipfile
 
 		// clean up after us
@@ -130,33 +124,80 @@ func Putfile(c *fiber.Ctx, cfg *cfg.Config, db *bolt.DB) (string, error) {
 	Log("Now serving %s from %s/%s", returnUrl, cfg.StorageDir, id)
 	Log("Expire set to: %s", entry.Expire)
 
+	// we do this in the background to not thwart the server
+	go DbInsert(db, id, entry)
+
+	return returnUrl, nil
+}
+
+func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *bolt.DB) error {
+	// deliver  a file and delete  it after a (configurable?) delay
+
+	id := c.Params("id")
+	file := c.Params("file")
+
+	upload, err := DbLookupId(db, id)
+	if err != nil {
+		// non existent db entry with that id, or other db error, see logs
+		return fiber.NewError(404, "No download with that id could be found!")
+	}
+
+	if len(file) == 0 {
+		// actual file name is optional
+		file = upload.File
+	}
+
+	filename := filepath.Join(cfg.StorageDir, id, file)
+
+	if _, err := os.Stat(filename); err != nil {
+		// db entry is there, but file isn't (anymore?)
+		go DbDeleteId(db, id)
+	}
+
+	// finally put the file to the client
+	err = c.Download(filename, file)
+
 	go func() {
-		// => db.go !
-		err := db.Update(func(tx *bolt.Tx) error {
-			b, err := tx.CreateBucketIfNotExists([]byte("uploads"))
-			if err != nil {
-				return fmt.Errorf("create bucket: %s", err)
-			}
-
-			jsonentry, err := json.Marshal(entry)
-			if err != nil {
-				return fmt.Errorf("json marshalling failure: %s", err)
-			}
-
-			err = b.Put([]byte(id), []byte(jsonentry))
-			if err != nil {
-				return fmt.Errorf("insert data: %s", err)
-			}
-
-			// results in:
-			// bbolt get /tmp/uploads.db uploads fb242922-86cb-43a8-92bc-b027c35f0586
-			// {"id":"fb242922-86cb-43a8-92bc-b027c35f0586","expire":"1d","file":"2023-02-17-13-09-data.zip"}
-			return nil
-		})
-		if err != nil {
-			Log("DB error: %s", err.Error())
+		// check if we need to delete the file now
+		if upload.Expire == "asap" {
+			cleanup(filepath.Join(cfg.StorageDir, id))
+			go DbDeleteId(db, id)
 		}
 	}()
 
-	return returnUrl, nil
+	return err
+}
+
+type Id struct {
+	Id string `json:"name" xml:"name" form:"name"`
+}
+
+func FileDelete(c *fiber.Ctx, cfg *cfg.Config, db *bolt.DB) error {
+	// delete file, id dir and db entry
+
+	id := c.Params("id")
+
+	// try: path, body(json), query param
+	if len(id) == 0 {
+		p := new(Id)
+		if err := c.BodyParser(p); err != nil {
+			if len(p.Id) == 0 {
+				id = c.Query("id")
+				if len(p.Id) == 0 {
+					return fiber.NewError(403, "No id given!")
+				}
+			}
+			id = p.Id
+		}
+	}
+
+	cleanup(filepath.Join(cfg.StorageDir, id))
+
+	err := DbDeleteId(db, id)
+	if err != nil {
+		// non existent db entry with that id, or other db error, see logs
+		return fiber.NewError(404, "No upload with that id could be found!")
+	}
+
+	return nil
 }

@@ -82,11 +82,20 @@ func Execute() {
 	rootCmd.PersistentFlags().BoolVarP(&ShowVersion, "version", "v", false, "Print program version")
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "custom config file")
 	rootCmd.PersistentFlags().BoolVarP(&conf.Debug, "debug", "d", false, "Enable debugging")
-	rootCmd.PersistentFlags().StringVarP(&conf.Listen, "listen", "l", ":8080", "listen to custom ip:port")
+	rootCmd.PersistentFlags().StringVarP(&conf.Listen, "listen", "l", ":8080", "listen to custom ip:port (use [ip]:port for ipv6)")
 	rootCmd.PersistentFlags().StringVarP(&conf.StorageDir, "storagedir", "s", "/tmp", "storage directory for uploaded files")
 	rootCmd.PersistentFlags().StringVarP(&conf.ApiPrefix, "apiprefix", "a", "/api", "API endpoint path")
 	rootCmd.PersistentFlags().StringVarP(&conf.Url, "url", "u", "", "HTTP endpoint w/o path")
 	rootCmd.PersistentFlags().StringVarP(&conf.DbFile, "dbfile", "D", "/tmp/uploads.db", "Bold database file to use")
+
+	// server settings
+	rootCmd.PersistentFlags().BoolVarP(&conf.V4only, "ipv4", "4", false, "Only listen on ipv4")
+	rootCmd.PersistentFlags().BoolVarP(&conf.V6only, "ipv6", "6", false, "Only listen on ipv6")
+	rootCmd.MarkFlagsMutuallyExclusive("ipv4", "ipv6")
+
+	rootCmd.PersistentFlags().BoolVarP(&conf.Prefork, "prefork", "p", false, "Prefork server threads")
+	rootCmd.PersistentFlags().StringVarP(&conf.AppName, "appname", "n", "upd "+conf.GetVersion(), "App name to say hi as")
+	rootCmd.PersistentFlags().IntVarP(&conf.BodyLimit, "bodylimit", "b", 10250000000, "Max allowed upload size in bytes")
 
 	err := rootCmd.Execute()
 	if err != nil {

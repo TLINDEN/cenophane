@@ -19,6 +19,7 @@ package api
 
 import (
 	"archive/zip"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -26,15 +27,12 @@ import (
 )
 
 // cleanup an upload directory, either because  we got an error in the
-// middle of an upload or something else  went wrong. we fork off a go
-// routine because this may block.
+// middle of an upload or something else  went wrong.
 func cleanup(dir string) {
-	go func() {
-		err := os.RemoveAll(dir)
-		if err != nil {
-			Log("Failed to remove dir %s: %s", dir, err.Error())
-		}
-	}()
+	err := os.RemoveAll(dir)
+	if err != nil {
+		Log("Failed to remove dir %s: %s", dir, err.Error())
+	}
 }
 
 func ZipSource(source, target string) error {
@@ -60,7 +58,10 @@ func ZipSource(source, target string) error {
 		newDir, err := os.Getwd()
 		if err != nil {
 		}
-		//Log("Current Working Direcotry: %s\n, source: %s", newDir, source)
+		if newDir != source {
+			err = errors.New("Failed to changedir!")
+			return
+		}
 
 		err = filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
 			// 2. Go through all the files of the source

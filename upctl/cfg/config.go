@@ -29,6 +29,7 @@ type Config struct {
 	Endpoint string
 	Debug    bool
 	Retries  int
+	Expire   string
 }
 
 func Getversion() string {

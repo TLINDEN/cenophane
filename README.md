@@ -7,14 +7,31 @@ Simple standalone file upload server with api and cli
 - store ts
 - implement goroutine to expire after 1d, 10m etc
 - use bolt db to retrieve list of items to expire
-- return a meaningful  message if a file has expired,  not just a 404,
-  that is: do  remove the file when it expires  but not the associated
-  db entry.
 - also serve a html upload page
 - add auth options (access key, users, roles, oauth2)
 - add metrics
 - add upctl command to remove a file
-- upd: add short  uuid to files, in case multiple  files with the same
-  name are being uploaded
 - use global map of api endpoints like /file/get/ etc
-- use separate group for /file/
+- create cobra client commands (upload, list, delete, edit)
+
+
+
+## curl commands
+
+### upload
+
+```
+curl -X POST localhost:8080/api/putfile -F "upload[]=@xxx" -F "upload[]=@yyy" -H "Content-Type: multipart/form-data"
+```
+
+### download
+```
+curl -O http://localhost:8080/api/v1/file/388f41f4-3f0d-41e1-a022-9132c0e9e16f/2023-02-28-18-33-xxx
+```
+
+### delete
+```
+curl -X DELETE http://localhost:8080/api/v1/file/388f41f4-3f0d-41e1-a022-9132c0e9e16f/
+curl -X DELETE http://localhost:8080/api/v1/file/?id=388f41f4-3f0d-41e1-a022-9132c0e9e16f/
+curl -X DELETE -H "Accept: application/json"  -d '{"id":"$id"}' http://localhost:8080/api/v1/file/
+```

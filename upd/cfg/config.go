@@ -32,6 +32,15 @@ type Config struct {
 	StorageDir string
 	Url        string
 	DbFile     string
+
+	// fiber settings, see:
+	// https://docs.gofiber.io/api/fiber/#config
+	Prefork   bool
+	AppName   string
+	BodyLimit int
+	V4only    bool
+	V6only    bool
+	Network   string
 }
 
 func Getversion() string {
@@ -44,6 +53,10 @@ func Getversion() string {
 	return fmt.Sprintf("This is upd version %s", VERSION)
 }
 
+func (c *Config) GetVersion() string {
+	return VERSION
+}
+
 // post processing of options, if any
 func (c *Config) ApplyDefaults() {
 	if len(c.Url) == 0 {
@@ -51,6 +64,19 @@ func (c *Config) ApplyDefaults() {
 			c.Url = "http://localhost" + c.Listen
 		} else {
 			c.Url = "http://" + c.Listen
+		}
+	}
+
+	switch {
+	case c.V4only:
+		c.Network = "tcp4"
+	case c.V6only:
+		c.Network = "tcp6"
+	default:
+		if c.Prefork {
+			c.Network = "tcp4"
+		} else {
+			c.Network = "tcp" // dual stack
 		}
 	}
 }

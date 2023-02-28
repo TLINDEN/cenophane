@@ -44,7 +44,7 @@ func Runclient(c *cfg.Config, args []string) error {
 
 	client.SetUserAgent("upctl-" + cfg.VERSION)
 
-	url := c.Endpoint + ApiVersion + "/file/put"
+	url := c.Endpoint + ApiVersion + "/file/"
 
 	rq := client.R()
 	for _, file := range args {
@@ -92,7 +92,7 @@ func Runclient(c *cfg.Config, args []string) error {
 
 	resp, err := rq.
 		SetFormData(map[string]string{
-			"expire": "1d",
+			"expire": c.Expire,
 		}).
 		SetUploadCallbackWithInterval(func(info req.UploadInfo) {
 			fmt.Printf("\r%q uploaded %.2f%%", info.FileName, float64(info.UploadedSize)/float64(info.FileSize)*100.0)
