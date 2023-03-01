@@ -20,14 +20,37 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-
 	bolt "go.etcd.io/bbolt"
 )
 
 const Bucket string = "uploads"
 
-func DbInsert(db *bolt.DB, id string, entry *Upload) {
-	err := db.Update(func(tx *bolt.Tx) error {
+// wrapper for bolt db
+type Db struct {
+	bolt *bolt.DB
+}
+
+// stores 1 upload object, gets into db
+type Upload struct {
+	Id       string    `json:"id"`
+	Expire   string    `json:"expire"`
+	File     string    `json:"file"`    // final filename (visible to the downloader)
+	Members  []string  `json:"members"` // contains multiple files, so File is an archive
+	Uploaded Timestamp `json:"uploaded"`
+}
+
+func NewDb(file string) (*Db, error) {
+	b, err := bolt.Open(file, 0600, nil)
+	db := Db{bolt: b}
+	return &db, err
+}
+
+func (db *Db) Close() {
+	db.bolt.Close()
+}
+
+func (db *Db) Insert(id string, entry *Upload) error {
+	err := db.bolt.Update(func(tx *bolt.Tx) error {
 		bucket, err := tx.CreateBucketIfNotExists([]byte(Bucket))
 		if err != nil {
 			return fmt.Errorf("create bucket: %s", err)
@@ -51,12 +74,14 @@ func DbInsert(db *bolt.DB, id string, entry *Upload) {
 	if err != nil {
 		Log("DB error: %s", err.Error())
 	}
+
+	return err
 }
 
-func DbLookupId(db *bolt.DB, id string) (Upload, error) {
+func (db *Db) Lookup(id string) (Upload, error) {
 	var upload Upload
 
-	err := db.View(func(tx *bolt.Tx) error {
+	err := db.bolt.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(Bucket))
 		j := bucket.Get([]byte(id))
 
@@ -79,8 +104,8 @@ func DbLookupId(db *bolt.DB, id string) (Upload, error) {
 	return upload, nil
 }
 
-func DbDeleteId(db *bolt.DB, id string) error {
-	err := db.Update(func(tx *bolt.Tx) error {
+func (db *Db) Delete(id string) error {
+	err := db.bolt.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(Bucket))
 
 		j := bucket.Get([]byte(id))

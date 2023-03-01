@@ -22,7 +22,6 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/tlinden/up/upd/cfg"
-	bolt "go.etcd.io/bbolt"
 )
 
 func Runserver(cfg *cfg.Config, args []string) error {
@@ -42,7 +41,7 @@ func Runserver(cfg *cfg.Config, args []string) error {
 		Format: "${pid} ${locals:requestid} ${status} - ${method} ${path}​\n",
 	}))
 
-	db, err := bolt.Open(cfg.DbFile, 0600, nil)
+	db, err := NewDb(cfg.DbFile)
 	if err != nil {
 		return err
 	}

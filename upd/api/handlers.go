@@ -21,7 +21,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/tlinden/up/upd/cfg"
-	bolt "go.etcd.io/bbolt"
 
 	"os"
 	"path/filepath"
@@ -29,7 +28,7 @@ import (
 	"time"
 )
 
-func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *bolt.DB) (string, error) {
+func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) (string, error) {
 	// supports upload of multiple files with:
 	//
 	// curl -X POST localhost:8080/putfile \
@@ -57,7 +56,8 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *bolt.DB) (string, error) {
 		return "", err
 	}
 
-	entry := &Upload{Id: id, Uploaded: time.Now()}
+	//entry := &Upload{Id: id, Uploaded: time.Now()}
+	entry := &Upload{Id: id, Uploaded: Timestamp{Time: time.Now()}}
 
 	// init upload obj
 
@@ -125,18 +125,18 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *bolt.DB) (string, error) {
 	Log("Expire set to: %s", entry.Expire)
 
 	// we do this in the background to not thwart the server
-	go DbInsert(db, id, entry)
+	go db.Insert(id, entry)
 
 	return returnUrl, nil
 }
 
-func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *bolt.DB) error {
+func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	// deliver  a file and delete  it after a (configurable?) delay
 
 	id := c.Params("id")
 	file := c.Params("file")
 
-	upload, err := DbLookupId(db, id)
+	upload, err := db.Lookup(id)
 	if err != nil {
 		// non existent db entry with that id, or other db error, see logs
 		return fiber.NewError(404, "No download with that id could be found!")
@@ -151,7 +151,7 @@ func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *bolt.DB) error {
 
 	if _, err := os.Stat(filename); err != nil {
 		// db entry is there, but file isn't (anymore?)
-		go DbDeleteId(db, id)
+		go db.Delete(id)
 	}
 
 	// finally put the file to the client
@@ -161,7 +161,7 @@ func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *bolt.DB) error {
 		// check if we need to delete the file now
 		if upload.Expire == "asap" {
 			cleanup(filepath.Join(cfg.StorageDir, id))
-			go DbDeleteId(db, id)
+			go db.Delete(id)
 		}
 	}()
 
@@ -172,7 +172,7 @@ type Id struct {
 	Id string `json:"name" xml:"name" form:"name"`
 }
 
-func FileDelete(c *fiber.Ctx, cfg *cfg.Config, db *bolt.DB) error {
+func FileDelete(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	// delete file, id dir and db entry
 
 	id := c.Params("id")
@@ -193,7 +193,7 @@ func FileDelete(c *fiber.Ctx, cfg *cfg.Config, db *bolt.DB) error {
 
 	cleanup(filepath.Join(cfg.StorageDir, id))
 
-	err := DbDeleteId(db, id)
+	err := db.Delete(id)
 	if err != nil {
 		// non existent db entry with that id, or other db error, see logs
 		return fiber.NewError(404, "No upload with that id could be found!")

@@ -37,15 +37,6 @@ type Meta struct {
 	Expire string `json:"expire" form:"expire"`
 }
 
-// stores 1 upload object, gets into db
-type Upload struct {
-	Id       string    `json:"id"`
-	Expire   string    `json:"expire"`
-	File     string    `json:"file"`    // final filename (visible to the downloader)
-	Members  []string  `json:"members"` // contains multiple files, so File is an archive
-	Uploaded time.Time `json:"uploaded"`
-}
-
 // vaious helbers
 func Log(format string, values ...any) {
 	fmt.Printf("[DEBUG] "+format+"\n", values...)
