@@ -3,9 +3,8 @@ Simple standalone file upload server with api and cli
 
 ## TODO
 
-- decouple db and http code in Runserver()
-- store ts
 - implement goroutine to expire after 1d, 10m etc
+  implemented. add go routine to server, use Db.Iter()
 - use bolt db to retrieve list of items to expire
 - also serve a html upload page
 - add auth options (access key, users, roles, oauth2)
@@ -13,7 +12,6 @@ Simple standalone file upload server with api and cli
 - add upctl command to remove a file
 - use global map of api endpoints like /file/get/ etc
 - create cobra client commands (upload, list, delete, edit)
-
 
 
 ## curl commands

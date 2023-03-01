@@ -20,6 +20,7 @@ package api
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"time"
 )
 
@@ -51,4 +52,56 @@ func NormalizeFilename(file string) string {
 	r := regexp.MustCompile(`[^\w\d\-_\\.]`)
 
 	return Ts() + r.ReplaceAllString(file, "")
+}
+
+/*
+   We could use time.ParseDuration(), but this doesn't support days.
+
+   We  could also  use github.com/xhit/go-str2duration/v2,  which does
+   the job,  but it's  just another dependency,  just for  this little
+   gem. And  we don't need a  time.Time value.
+
+   Convert a  duration into  seconds (int).
+   Valid  time units  are "s", "m", "h" and "d".
+*/
+func duration2int(duration string) int {
+	re := regexp.MustCompile(`(\d+)([dhms])`)
+	seconds := 0
+
+	for _, match := range re.FindAllStringSubmatch(duration, -1) {
+		if len(match) == 3 {
+			v, _ := strconv.Atoi(match[1])
+			switch match[2][0] {
+			case 'd':
+				seconds += v * 86400
+			case 'h':
+				seconds += v * 3600
+			case 'm':
+				seconds += v * 60
+			case 's':
+				seconds += v
+			}
+		}
+	}
+
+	return seconds
+}
+
+/*
+   Calculate   if  time   is   up  based   on   start  time.Time   and
+   duration. Returns  true if time  is expired. Start time  comes from
+   the database.
+
+aka:
+   if(now - start) >= duration { time is up}
+*/
+func IsExpired(start time.Time, duration string) bool {
+	now := time.Now()
+	expiretime := duration2int(duration)
+
+	if now.Unix()-start.Unix() >= int64(expiretime) {
+		return true
+	}
+
+	return false
 }

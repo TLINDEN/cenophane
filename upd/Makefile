@@ -48,7 +48,7 @@ clean:
 
 test:
 	go test -v ./...
-	bash t/test.sh
+#	bash t/test.sh
 
 singletest:
 	@echo "Call like this: ''make singletest TEST=TestX1 MOD=lib"

@@ -124,3 +124,23 @@ func (db *Db) Delete(id string) error {
 
 	return err
 }
+
+func (db *Db) Iterate(iterator func(id string, upload Upload)) error {
+	var upload Upload
+
+	err := db.bolt.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(Bucket))
+		err := bucket.ForEach(func(id, j []byte) error {
+			if err := json.Unmarshal(j, &upload); err != nil {
+				return fmt.Errorf("unable to unmarshal json: %s", err)
+			}
+
+			iterator(string(id), upload)
+			return nil
+		})
+
+		return err // might be nil as well
+	})
+
+	return err
+}
