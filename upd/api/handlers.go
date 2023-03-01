@@ -56,10 +56,8 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) (string, error) {
 		return "", err
 	}
 
-	//entry := &Upload{Id: id, Uploaded: time.Now()}
-	entry := &Upload{Id: id, Uploaded: Timestamp{Time: time.Now()}}
-
 	// init upload obj
+	entry := &Upload{Id: id, Uploaded: Timestamp{Time: time.Now()}}
 
 	// retrieve files, if any
 	files := form.File["upload[]"]
@@ -83,7 +81,11 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) (string, error) {
 	if len(formdata.Expire) == 0 {
 		entry.Expire = "asap"
 	} else {
-		entry.Expire = formdata.Expire // FIXME: validate
+		ex, err := Untaint(formdata.Expire, `[dhms0-9]`) // duration or asap allowed
+		if err != nil {
+			return "", err
+		}
+		entry.Expire = ex
 	}
 
 	if len(entry.Members) == 1 {
@@ -131,10 +133,14 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) (string, error) {
 }
 
 func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
-	// deliver  a file and delete  it after a (configurable?) delay
+	// deliver  a file and delete  it if expire is set to asap
 
-	id := c.Params("id")
-	file := c.Params("file")
+	// we ignore c.Params("file"), cause  it may be malign. Also we've
+	// got it in the db anyway
+	id, err := Untaint(c.Params("id"), `[^a-zA-Z0-9\-]`)
+	if err != nil {
+		return fiber.NewError(403, "Invalid id provided!")
+	}
 
 	upload, err := db.Lookup(id)
 	if err != nil {
@@ -142,10 +148,7 @@ func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 		return fiber.NewError(404, "No download with that id could be found!")
 	}
 
-	if len(file) == 0 {
-		// actual file name is optional
-		file = upload.File
-	}
+	file := upload.File
 
 	filename := filepath.Join(cfg.StorageDir, id, file)
 
@@ -158,10 +161,10 @@ func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	err = c.Download(filename, file)
 
 	go func() {
-		// check if we need to delete the file now
+		// check if we need to delete the file now and do it in the background
 		if upload.Expire == "asap" {
 			cleanup(filepath.Join(cfg.StorageDir, id))
-			go db.Delete(id)
+			db.Delete(id)
 		}
 	}()
 
@@ -175,7 +178,10 @@ type Id struct {
 func FileDelete(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	// delete file, id dir and db entry
 
-	id := c.Params("id")
+	id, err := Untaint(c.Params("id"), `[^a-zA-Z0-9\-]`)
+	if err != nil {
+		return fiber.NewError(403, "Invalid id provided!")
+	}
 
 	// try: path, body(json), query param
 	if len(id) == 0 {
@@ -193,7 +199,7 @@ func FileDelete(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 
 	cleanup(filepath.Join(cfg.StorageDir, id))
 
-	err := db.Delete(id)
+	err = db.Delete(id)
 	if err != nil {
 		// non existent db entry with that id, or other db error, see logs
 		return fiber.NewError(404, "No upload with that id could be found!")

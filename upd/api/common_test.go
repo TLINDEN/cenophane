@@ -51,3 +51,28 @@ func TestIsExpired(t *testing.T) {
 		})
 	}
 }
+
+func TestUntaint(t *testing.T) {
+	var tests = []struct {
+		want    string
+		input   string
+		expect  string
+		wanterr bool
+	}{
+		{`[^a-zA-Z0-9\-]`, "ab23-bb43-beef", "ab23-bb43-beef", false},
+		{`[^a-zA-Z0-9\-]`, "`cat passwd`+ab23-bb43-beef", "catpasswdab23-bb43-beef", true},
+	}
+
+	for _, tt := range tests {
+		testname := fmt.Sprintf("untaint-%s-%s", tt.want, tt.expect)
+		t.Run(testname, func(t *testing.T) {
+			untainted, err := Untaint(tt.input, tt.want)
+			if untainted != tt.expect {
+				t.Errorf("got %s, want %s", untainted, tt.expect)
+			}
+			if err != nil && !tt.wanterr {
+				t.Errorf("got error: %s", err)
+			}
+		})
+	}
+}

@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package api
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -104,4 +105,28 @@ func IsExpired(start time.Time, duration string) bool {
 	}
 
 	return false
+}
+
+/*
+   Untaint user input, that is: remove all non supported chars.
+
+   wanted is a  regexp matching chars we shall  leave. Everything else
+   will be removed. Eg:
+
+   untainted := Untaint(input, `[^a-zA-Z0-9\-]`)
+
+   Returns a  new string  and an  error if the  input string  has been
+   modified.  It's the  callers  choice  to decide  what  to do  about
+   it. You may  ignore the error and use the  untainted string or bail
+   out.
+*/
+func Untaint(input string, wanted string) (string, error) {
+	re := regexp.MustCompile(wanted)
+	untainted := re.ReplaceAllString(input, "")
+
+	if len(untainted) != len(input) {
+		return untainted, errors.New("Invalid input string!")
+	}
+
+	return untainted, nil
 }
