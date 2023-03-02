@@ -20,9 +20,13 @@ package api
 import (
 	"archive/zip"
 	"errors"
+	"github.com/gofiber/fiber/v2"
+	"github.com/tlinden/up/upd/cfg"
 	"io"
+	"mime/multipart"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -35,10 +39,69 @@ func cleanup(dir string) {
 	}
 }
 
-func ZipSource(source, target string) error {
-	// 1. Create a ZIP file and zip.Writer
-	// source must be an absolute path, target a zip file
-	f, err := os.Create(target)
+// Extract form file[s] and store them on disk, returns a list of files
+func SaveFormFiles(c *fiber.Ctx, cfg *cfg.Config, files []*multipart.FileHeader, id string) ([]string, error) {
+	members := []string{}
+	for _, file := range files {
+		filename := NormalizeFilename(filepath.Base(file.Filename))
+		path := filepath.Join(cfg.StorageDir, id, filename)
+		members = append(members, filename)
+		Log("Received: %s => %s/%s", file.Filename, id, filename)
+
+		if err := c.SaveFile(file, path); err != nil {
+			cleanup(filepath.Join(cfg.StorageDir, id))
+			return nil, err
+		}
+	}
+
+	return members, nil
+}
+
+// generate return url. in case of multiple files, zip and remove them
+func ProcessFormFiles(cfg *cfg.Config, members []string, id string) (string, string, error) {
+	returnUrl := ""
+	Filename := ""
+
+	if len(members) == 1 {
+		returnUrl = strings.Join([]string{cfg.Url + cfg.ApiPrefix + ApiVersion, "file", id, members[0]}, "/")
+		Filename = members[0]
+	} else {
+		zipfile := Ts() + "data.zip"
+		tmpzip := filepath.Join(cfg.StorageDir, zipfile)
+		finalzip := filepath.Join(cfg.StorageDir, id, zipfile)
+		iddir := filepath.Join(cfg.StorageDir, id)
+
+		if err := ZipDir(iddir, tmpzip); err != nil {
+			cleanup(iddir)
+			Log("zip error")
+			return "", "", err
+		}
+
+		if err := os.Rename(tmpzip, finalzip); err != nil {
+			cleanup(iddir)
+			return "", "", err
+		}
+
+		returnUrl = strings.Join([]string{cfg.Url + cfg.ApiPrefix + ApiVersion, "file", id, zipfile}, "/")
+		Filename = zipfile
+
+		// clean up after us
+		go func() {
+			for _, file := range members {
+				if err := os.Remove(filepath.Join(cfg.StorageDir, id, file)); err != nil {
+					Log("ERROR: unable to delete %s: %s", file, err)
+				}
+			}
+		}()
+	}
+
+	return returnUrl, Filename, nil
+}
+
+// Create a zip archive from a directory
+// FIXME: -e option, if any, goes here
+func ZipDir(directory, zipfilename string) error {
+	f, err := os.Create(zipfilename)
 	if err != nil {
 		return err
 	}
@@ -54,17 +117,17 @@ func ZipSource(source, target string) error {
 	go func() {
 		defer wg.Done()
 
-		os.Chdir(source)
+		os.Chdir(directory)
 		newDir, err := os.Getwd()
 		if err != nil {
 		}
-		if newDir != source {
+		if newDir != directory {
 			err = errors.New("Failed to changedir!")
 			return
 		}
 
 		err = filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
-			// 2. Go through all the files of the source
+			// 2. Go through all the files of the directory
 			if err != nil {
 				return err
 			}
@@ -80,7 +143,7 @@ func ZipSource(source, target string) error {
 
 			// 4. Set relative path of a file as the header name
 			header.Name = path
-			//Log("a: <%s>, b: <%s>, rel: <%s>", filepath.Dir(source), path, header.Name)
+			//Log("a: <%s>, b: <%s>, rel: <%s>", filepath.Dir(directory), path, header.Name)
 			if err != nil {
 				return err
 			}

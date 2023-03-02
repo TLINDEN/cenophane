@@ -24,7 +24,6 @@ import (
 
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -61,67 +60,35 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) (string, error) {
 
 	// retrieve files, if any
 	files := form.File["upload[]"]
-	for _, file := range files {
-		filename := NormalizeFilename(filepath.Base(file.Filename))
-		path := filepath.Join(cfg.StorageDir, id, filename)
-		entry.Members = append(entry.Members, filename)
-		Log("Received: %s => %s/%s", file.Filename, id, filename)
-
-		if err := c.SaveFile(file, path); err != nil {
-			cleanup(filepath.Join(cfg.StorageDir, id))
-			return "", err
-		}
+	members, err := SaveFormFiles(c, cfg, files, id)
+	if err != nil {
+		return "", fiber.NewError(500, "Could not store uploaded file[s]!")
 	}
+	entry.Members = members
 
+	// extract auxilliary form data (expire field et al)
 	if err := c.BodyParser(&formdata); err != nil {
 		Log("bodyparser error %s", err.Error())
 		return "", err
 	}
 
+	// post process expire
 	if len(formdata.Expire) == 0 {
 		entry.Expire = "asap"
 	} else {
-		ex, err := Untaint(formdata.Expire, `[dhms0-9]`) // duration or asap allowed
+		ex, err := Untaint(formdata.Expire, `[^dhms0-9]`) // duration or asap allowed
 		if err != nil {
 			return "", err
 		}
 		entry.Expire = ex
 	}
 
-	if len(entry.Members) == 1 {
-		returnUrl = strings.Join([]string{cfg.Url + cfg.ApiPrefix + ApiVersion, "file", id, entry.Members[0]}, "/")
-		entry.File = entry.Members[0]
-	} else {
-		// FIXME => func!
-		zipfile := Ts() + "data.zip"
-		tmpzip := filepath.Join(cfg.StorageDir, zipfile)
-		finalzip := filepath.Join(cfg.StorageDir, id, zipfile)
-		iddir := filepath.Join(cfg.StorageDir, id)
-
-		if err := ZipSource(iddir, tmpzip); err != nil {
-			cleanup(iddir)
-			Log("zip error")
-			return "", err
-		}
-
-		if err := os.Rename(tmpzip, finalzip); err != nil {
-			cleanup(iddir)
-			return "", err
-		}
-
-		returnUrl = strings.Join([]string{cfg.Url + cfg.ApiPrefix + ApiVersion, "file", id, zipfile}, "/")
-		entry.File = zipfile
-
-		// clean up after us
-		go func() {
-			for _, file := range entry.Members {
-				if err := os.Remove(filepath.Join(cfg.StorageDir, id, file)); err != nil {
-					Log("ERROR: unable to delete %s: %s", file, err)
-				}
-			}
-		}()
-
+	// get url [and zip if there are multiple files]
+	returnUrl, Newfilename, err := ProcessFormFiles(cfg, entry.Members, id)
+	if err != nil {
+		return "", fiber.NewError(500, "Could not process uploaded file[s]!")
 	}
+	entry.File = Newfilename
 
 	Log("Now serving %s from %s/%s", returnUrl, cfg.StorageDir, id)
 	Log("Expire set to: %s", entry.Expire)
@@ -149,12 +116,12 @@ func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	file := upload.File
-
 	filename := filepath.Join(cfg.StorageDir, id, file)
 
 	if _, err := os.Stat(filename); err != nil {
 		// db entry is there, but file isn't (anymore?)
 		go db.Delete(id)
+		return fiber.NewError(404, "No download with that id could be found!")
 	}
 
 	// finally put the file to the client
@@ -183,18 +150,8 @@ func FileDelete(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 		return fiber.NewError(403, "Invalid id provided!")
 	}
 
-	// try: path, body(json), query param
 	if len(id) == 0 {
-		p := new(Id)
-		if err := c.BodyParser(p); err != nil {
-			if len(p.Id) == 0 {
-				id = c.Query("id")
-				if len(p.Id) == 0 {
-					return fiber.NewError(403, "No id given!")
-				}
-			}
-			id = p.Id
-		}
+		return fiber.NewError(403, "No id given!")
 	}
 
 	cleanup(filepath.Join(cfg.StorageDir, id))

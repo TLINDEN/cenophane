@@ -65,10 +65,6 @@ func Runserver(cfg *cfg.Config, args []string) error {
 		api.Delete("/file/:id/", func(c *fiber.Ctx) error {
 			return FileDelete(c, cfg, db)
 		})
-
-		api.Delete("/file/", func(c *fiber.Ctx) error {
-			return FileDelete(c, cfg, db)
-		})
 	}
 
 	router.Get("/", func(c *fiber.Ctx) error {
@@ -80,6 +76,8 @@ func Runserver(cfg *cfg.Config, args []string) error {
 }
 
 func SendResponse(c *fiber.Ctx, msg string, err error) error {
+	// FIXME:
+	// respect fiber.NewError(500, "Could not process uploaded file[s]!")
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(Result{
 			Code:    fiber.StatusBadRequest,

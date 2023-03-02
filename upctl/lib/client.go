@@ -19,7 +19,7 @@ package lib
 
 import (
 	"encoding/json"
-	//"errors"
+	"errors"
 	"fmt"
 	"github.com/imroc/req/v3"
 	"github.com/tlinden/up/upctl/cfg"
@@ -34,9 +34,12 @@ type Response struct {
 	Message string `json:"message"`
 }
 
-const ApiVersion string = "/v1"
+type Request struct {
+	R   *req.Request
+	Url string
+}
 
-func Runclient(c *cfg.Config, args []string) error {
+func Setup(c *cfg.Config, path string) *Request {
 	client := req.C()
 	if c.Debug {
 		client.DevMode()
@@ -44,9 +47,28 @@ func Runclient(c *cfg.Config, args []string) error {
 
 	client.SetUserAgent("upctl-" + cfg.VERSION)
 
-	url := c.Endpoint + ApiVersion + "/file/"
+	R := client.R()
 
-	rq := client.R()
+	if c.Retries > 0 {
+		// Enable retry and set the maximum retry count.
+		R.SetRetryCount(c.Retries).
+			//  Set  the  retry  sleep   interval  with  a  commonly  used
+			//   algorithm:  capped   exponential   backoff  with   jitter
+			// (https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/).
+			SetRetryBackoffInterval(1*time.Second, 5*time.Second).
+			AddRetryHook(func(resp *req.Response, err error) {
+				req := resp.Request.RawRequest
+				if c.Debug {
+					fmt.Println("Retrying endpoint request:", req.Method, req.URL)
+				}
+			})
+	}
+
+	return &Request{Url: c.Endpoint + cfg.ApiVersion + "/file/", R: R}
+
+}
+
+func GatherFiles(rq *Request, args []string) error {
 	for _, file := range args {
 		info, err := os.Stat(file)
 
@@ -61,7 +83,7 @@ func Runclient(c *cfg.Config, args []string) error {
 				}
 
 				if !info.IsDir() {
-					rq.SetFile("upload[]", path)
+					rq.R.SetFile("upload[]", path)
 				}
 				return nil
 			})
@@ -70,27 +92,24 @@ func Runclient(c *cfg.Config, args []string) error {
 				return err
 			}
 		} else {
-			rq.SetFile("upload[]", file)
+			rq.R.SetFile("upload[]", file)
 		}
-
 	}
 
-	if c.Retries > 0 {
-		// Enable retry and set the maximum retry count.
-		rq.SetRetryCount(c.Retries).
-			//  Set  the  retry  sleep   interval  with  a  commonly  used
-			//   algorithm:  capped   exponential   backoff  with   jitter
-			// (https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/).
-			SetRetryBackoffInterval(1*time.Second, 5*time.Second).
-			AddRetryHook(func(resp *req.Response, err error) {
-				req := resp.Request.RawRequest
-				if c.Debug {
-					fmt.Println("Retrying endpoint request:", req.Method, req.URL)
-				}
-			})
+	return nil
+}
+
+func Upload(c *cfg.Config, args []string) error {
+	// setup url, req.Request, timeout handling etc
+	rq := Setup(c, "/file/")
+
+	// collect files to upload from @argv
+	if err := GatherFiles(rq, args); err != nil {
+		return err
 	}
 
-	resp, err := rq.
+	// actual post w/ settings
+	resp, err := rq.R.
 		SetFormData(map[string]string{
 			"expire": c.Expire,
 		}).
@@ -98,7 +117,7 @@ func Runclient(c *cfg.Config, args []string) error {
 			fmt.Printf("\r%q uploaded %.2f%%", info.FileName, float64(info.UploadedSize)/float64(info.FileSize)*100.0)
 			fmt.Println()
 		}, 10*time.Millisecond).
-		Post(url)
+		Post(rq.Url)
 
 	fmt.Println("")
 
@@ -106,11 +125,9 @@ func Runclient(c *cfg.Config, args []string) error {
 		return err
 	}
 
+	// we expect a json response
 	r := Response{}
-
 	json.Unmarshal([]byte(resp.String()), &r)
-
-	fmt.Println(r)
 
 	if c.Debug {
 		trace := resp.TraceInfo()  // Use `resp.Request.TraceInfo()` to avoid unnecessary struct copy in production.
@@ -118,6 +135,12 @@ func Runclient(c *cfg.Config, args []string) error {
 		fmt.Println("----------")
 		fmt.Println(trace)
 	}
+
+	if !r.Success {
+		return errors.New(r.Message)
+	}
+
+	fmt.Println(r.Message)
 
 	return nil
 }

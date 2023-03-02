@@ -23,7 +23,6 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/tlinden/up/upctl/cfg"
-	"github.com/tlinden/up/upctl/lib"
 	"os"
 	"strings"
 )
@@ -56,8 +55,8 @@ func Execute() {
 
 	var rootCmd = &cobra.Command{
 		Use:   "upctl [options]",
-		Short: "upload client",
-		Long:  `Upload files to an upload api.`,
+		Short: "upload api client",
+		Long:  `Manage files on an upload api server.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if ShowVersion {
 				fmt.Println(cfg.Getversion())
@@ -69,13 +68,10 @@ func Execute() {
 			}
 
 			if len(args) == 0 {
-				return errors.New("No files specified to upload!")
+				return errors.New("No command specified!")
 			}
 
-			// errors at this stage do not cause the usage to be shown
-			cmd.SilenceUsage = true
-
-			return lib.Runclient(&conf, args)
+			return nil
 		},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return initConfig(cmd, &conf)
@@ -88,7 +84,8 @@ func Execute() {
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "custom config file")
 	rootCmd.PersistentFlags().IntVarP(&conf.Retries, "retries", "r", 3, "How often shall we retry to access our endpoint")
 	rootCmd.PersistentFlags().StringVarP(&conf.Endpoint, "endpoint", "p", "http://localhost:8080/api", "upload api endpoint url")
-	rootCmd.PersistentFlags().StringVarP(&conf.Expire, "expire", "e", "asap", "Expire setting: asap or duration (accepted shortcuts: dmh)")
+
+	rootCmd.AddCommand(UploadCommand(&conf))
 
 	err := rootCmd.Execute()
 	if err != nil {
