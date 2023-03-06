@@ -83,7 +83,8 @@ func Execute() {
 	rootCmd.PersistentFlags().BoolVarP(&conf.Debug, "debug", "d", false, "Enable debugging")
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "custom config file")
 	rootCmd.PersistentFlags().IntVarP(&conf.Retries, "retries", "r", 3, "How often shall we retry to access our endpoint")
-	rootCmd.PersistentFlags().StringVarP(&conf.Endpoint, "endpoint", "p", "http://localhost:8080/api", "upload api endpoint url")
+	rootCmd.PersistentFlags().StringVarP(&conf.Endpoint, "endpoint", "p", "http://localhost:8080/api/v1", "upload api endpoint url")
+	rootCmd.PersistentFlags().StringVarP(&conf.Apikey, "apikey", "a", "", "Api key to use")
 
 	rootCmd.AddCommand(UploadCommand(&conf))
 

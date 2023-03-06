@@ -41,6 +41,9 @@ type Config struct {
 	V4only    bool
 	V6only    bool
 	Network   string
+
+	// only settable via config
+	Apikeys []string
 }
 
 func Getversion() string {

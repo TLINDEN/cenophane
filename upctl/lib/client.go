@@ -64,7 +64,11 @@ func Setup(c *cfg.Config, path string) *Request {
 			})
 	}
 
-	return &Request{Url: c.Endpoint + cfg.ApiVersion + "/file/", R: R}
+	if len(c.Apikey) > 0 {
+		client.SetCommonBearerAuthToken(c.Apikey)
+	}
+
+	return &Request{Url: c.Endpoint + "/file/", R: R}
 
 }
 

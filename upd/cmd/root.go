@@ -96,7 +96,7 @@ func Execute() {
 	rootCmd.PersistentFlags().BoolVarP(&conf.Prefork, "prefork", "p", false, "Prefork server threads")
 	rootCmd.PersistentFlags().StringVarP(&conf.AppName, "appname", "n", "upd "+conf.GetVersion(), "App name to say hi as")
 	rootCmd.PersistentFlags().IntVarP(&conf.BodyLimit, "bodylimit", "b", 10250000000, "Max allowed upload size in bytes")
-
+	rootCmd.PersistentFlags().StringSliceVarP(&conf.Apikeys, "apikey", "", []string{}, "Api key[s] to allow access")
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)

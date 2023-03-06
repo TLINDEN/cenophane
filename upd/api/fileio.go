@@ -63,7 +63,7 @@ func ProcessFormFiles(cfg *cfg.Config, members []string, id string) (string, str
 	Filename := ""
 
 	if len(members) == 1 {
-		returnUrl = strings.Join([]string{cfg.Url + cfg.ApiPrefix + ApiVersion, "file", id, members[0]}, "/")
+		returnUrl = strings.Join([]string{cfg.Url, "download", id, members[0]}, "/")
 		Filename = members[0]
 	} else {
 		zipfile := Ts() + "data.zip"

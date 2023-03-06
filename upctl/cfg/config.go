@@ -23,7 +23,6 @@ import (
 
 const Version string = "v0.0.1"
 
-var ApiVersion string = "/v1"
 var VERSION string // maintained by -x
 
 type Config struct {
@@ -31,6 +30,7 @@ type Config struct {
 	Debug    bool
 	Retries  int
 	Expire   string
+	Apikey   string
 }
 
 func Getversion() string {

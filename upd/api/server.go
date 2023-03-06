@@ -21,6 +21,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
+	"github.com/gofiber/keyauth/v2"
 	"github.com/tlinden/up/upd/cfg"
 )
 
@@ -47,28 +48,47 @@ func Runserver(cfg *cfg.Config, args []string) error {
 	}
 	defer db.Close()
 
+	AuthSetEndpoints(cfg.ApiPrefix, ApiVersion, []string{"/file"})
+	AuthSetApikeys(cfg.Apikeys)
+
+	auth := keyauth.New(keyauth.Config{
+		Validator: validateAPIKey,
+	})
+
+	shallExpire := true
+
 	api := router.Group(cfg.ApiPrefix + ApiVersion)
 	{
-		api.Post("/file/", func(c *fiber.Ctx) error {
+		// authenticated routes
+		api.Post("/file/", auth, func(c *fiber.Ctx) error {
 			msg, err := FilePut(c, cfg, db)
 			return SendResponse(c, msg, err)
 		})
 
-		api.Get("/file/:id/:file", func(c *fiber.Ctx) error {
+		api.Get("/file/:id/:file", auth, func(c *fiber.Ctx) error {
 			return FileGet(c, cfg, db)
 		})
 
-		api.Get("/file/:id/", func(c *fiber.Ctx) error {
+		api.Get("/file/:id/", auth, func(c *fiber.Ctx) error {
 			return FileGet(c, cfg, db)
 		})
 
-		api.Delete("/file/:id/", func(c *fiber.Ctx) error {
+		api.Delete("/file/:id/", auth, func(c *fiber.Ctx) error {
 			return FileDelete(c, cfg, db)
 		})
 	}
 
+	// public routes
 	router.Get("/", func(c *fiber.Ctx) error {
 		return c.Send([]byte("welcome to upload api, use /api enpoint!"))
+	})
+
+	router.Get("/download/:id/:file", func(c *fiber.Ctx) error {
+		return FileGet(c, cfg, db, shallExpire)
+	})
+
+	router.Get("/download/:id/", func(c *fiber.Ctx) error {
+		return FileGet(c, cfg, db, shallExpire)
 	})
 
 	return router.Listen(cfg.Listen)

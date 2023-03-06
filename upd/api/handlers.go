@@ -39,8 +39,7 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) (string, error) {
 	// the  file is being stored  as is.
 	//
 	// Returns the  name of the uploaded file.
-	//
-	// FIXME: normalize or rename filename of single file to avoid dumb file names
+
 	id := uuid.NewString()
 
 	var returnUrl string
@@ -99,7 +98,7 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) (string, error) {
 	return returnUrl, nil
 }
 
-func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
+func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) error {
 	// deliver  a file and delete  it if expire is set to asap
 
 	// we ignore c.Params("file"), cause  it may be malign. Also we've
@@ -127,13 +126,17 @@ func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	// finally put the file to the client
 	err = c.Download(filename, file)
 
-	go func() {
-		// check if we need to delete the file now and do it in the background
-		if upload.Expire == "asap" {
-			cleanup(filepath.Join(cfg.StorageDir, id))
-			db.Delete(id)
+	if len(shallExpire) > 0 {
+		if shallExpire[0] == true {
+			go func() {
+				// check if we need to delete the file now and do it in the background
+				if upload.Expire == "asap" {
+					cleanup(filepath.Join(cfg.StorageDir, id))
+					db.Delete(id)
+				}
+			}()
 		}
-	}()
+	}
 
 	return err
 }
