@@ -39,6 +39,10 @@ type Request struct {
 	Url string
 }
 
+type ListParams struct {
+	Apicontext string `json:"apicontext"`
+}
+
 func Setup(c *cfg.Config, path string) *Request {
 	client := req.C()
 	if c.Debug {
@@ -59,7 +63,7 @@ func Setup(c *cfg.Config, path string) *Request {
 			AddRetryHook(func(resp *req.Response, err error) {
 				req := resp.Request.RawRequest
 				if c.Debug {
-					fmt.Println("Retrying endpoint request:", req.Method, req.URL)
+					fmt.Println("Retrying endpoint request:", req.Method, req.URL, err)
 				}
 			})
 	}
@@ -68,7 +72,7 @@ func Setup(c *cfg.Config, path string) *Request {
 		client.SetCommonBearerAuthToken(c.Apikey)
 	}
 
-	return &Request{Url: c.Endpoint + "/file/", R: R}
+	return &Request{Url: c.Endpoint + path, R: R}
 
 }
 
@@ -129,22 +133,55 @@ func Upload(c *cfg.Config, args []string) error {
 		return err
 	}
 
+	return HandleResponse(c, resp)
+}
+
+func HandleResponse(c *cfg.Config, resp *req.Response) error {
 	// we expect a json response
 	r := Response{}
-	json.Unmarshal([]byte(resp.String()), &r)
+
+	if err := json.Unmarshal([]byte(resp.String()), &r); err != nil {
+		// text output!
+		r.Message = resp.String()
+	}
 
 	if c.Debug {
-		trace := resp.TraceInfo()  // Use `resp.Request.TraceInfo()` to avoid unnecessary struct copy in production.
-		fmt.Println(trace.Blame()) // Print out exactly where the http request is slowing down.
+		trace := resp.Request.TraceInfo()
+		fmt.Println(trace.Blame())
 		fmt.Println("----------")
 		fmt.Println(trace)
 	}
 
 	if !r.Success {
-		return errors.New(r.Message)
+		if len(r.Message) == 0 {
+			if resp.Err != nil {
+				return resp.Err
+			} else {
+				return errors.New("Unknown error")
+			}
+		} else {
+			return errors.New(r.Message)
+		}
 	}
 
+	// all right
 	fmt.Println(r.Message)
-
 	return nil
+}
+
+func List(c *cfg.Config, args []string) error {
+	rq := Setup(c, "/list/")
+
+	params := &ListParams{Apicontext: c.Apicontext}
+	resp, err := rq.R.
+		SetBodyJsonMarshal(params).
+		Get(rq.Url)
+
+	fmt.Println("")
+
+	if err != nil {
+		return err
+	}
+
+	return HandleResponse(c, resp)
 }

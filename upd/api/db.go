@@ -20,6 +20,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/alecthomas/repr"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -37,6 +38,11 @@ type Upload struct {
 	File     string    `json:"file"`    // final filename (visible to the downloader)
 	Members  []string  `json:"members"` // contains multiple files, so File is an archive
 	Uploaded Timestamp `json:"uploaded"`
+	Context  string    `json:"context"`
+}
+
+type Uploads struct {
+	Entries []*Upload `json:"uploads"`
 }
 
 func NewDb(file string) (*Db, error) {
@@ -125,22 +131,30 @@ func (db *Db) Delete(id string) error {
 	return err
 }
 
-func (db *Db) Iterate(iterator func(id string, upload Upload)) error {
-	var upload Upload
+func (db *Db) List(apicontext string) (*Uploads, error) {
+	uploads := &Uploads{}
 
 	err := db.bolt.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(Bucket))
 		err := bucket.ForEach(func(id, j []byte) error {
+			upload := &Upload{}
 			if err := json.Unmarshal(j, &upload); err != nil {
 				return fmt.Errorf("unable to unmarshal json: %s", err)
 			}
 
-			iterator(string(id), upload)
+			if apicontext != "" {
+				if apicontext == upload.Context {
+					uploads.Entries = append(uploads.Entries, upload)
+				}
+			} else {
+				uploads.Entries = append(uploads.Entries, upload)
+			}
+
 			return nil
 		})
 
 		return err // might be nil as well
 	})
 
-	return err
+	return uploads, err
 }

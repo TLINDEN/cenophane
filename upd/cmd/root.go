@@ -19,12 +19,21 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
+
+	"github.com/knadh/koanf/parsers/hcl"
+	"github.com/knadh/koanf/providers/env"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/providers/posflag"
+	"github.com/knadh/koanf/v2"
+
+	flag "github.com/spf13/pflag"
+
+	"github.com/alecthomas/repr"
 	"github.com/tlinden/up/upd/api"
 	"github.com/tlinden/up/upd/cfg"
+
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -32,126 +41,93 @@ var (
 	cfgFile string
 )
 
-func completion(cmd *cobra.Command, mode string) error {
-	switch mode {
-	case "bash":
-		return cmd.Root().GenBashCompletion(os.Stdout)
-	case "zsh":
-		return cmd.Root().GenZshCompletion(os.Stdout)
-	case "fish":
-		return cmd.Root().GenFishCompletion(os.Stdout, true)
-	case "powershell":
-		return cmd.Root().GenPowerShellCompletionWithDesc(os.Stdout)
-	default:
-		return errors.New("Invalid shell parameter! Valid ones: bash|zsh|fish|powershell")
-	}
-}
-
-func Execute() {
+func Execute() error {
 	var (
-		conf           cfg.Config
-		ShowVersion    bool
-		ShowCompletion string
+		conf        cfg.Config
+		ShowVersion bool
 	)
 
-	var rootCmd = &cobra.Command{
-		Use:   "upd [options]",
-		Short: "upload daemon",
-		Long:  `Run an upload daemon reachable via REST API`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if ShowVersion {
-				fmt.Println(cfg.Getversion())
-				return nil
-			}
-
-			if len(ShowCompletion) > 0 {
-				return completion(cmd, ShowCompletion)
-			}
-
-			conf.ApplyDefaults()
-
-			// actual execution starts here
-			return api.Runserver(&conf, args)
-		},
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return initConfig(cmd)
-		},
+	f := flag.NewFlagSet("config", flag.ContinueOnError)
+	f.Usage = func() {
+		fmt.Println(f.FlagUsages())
+		os.Exit(0)
 	}
 
-	// options
-	rootCmd.PersistentFlags().BoolVarP(&ShowVersion, "version", "v", false, "Print program version")
-	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "custom config file")
-	rootCmd.PersistentFlags().BoolVarP(&conf.Debug, "debug", "d", false, "Enable debugging")
-	rootCmd.PersistentFlags().StringVarP(&conf.Listen, "listen", "l", ":8080", "listen to custom ip:port (use [ip]:port for ipv6)")
-	rootCmd.PersistentFlags().StringVarP(&conf.StorageDir, "storagedir", "s", "/tmp", "storage directory for uploaded files")
-	rootCmd.PersistentFlags().StringVarP(&conf.ApiPrefix, "apiprefix", "a", "/api", "API endpoint path")
-	rootCmd.PersistentFlags().StringVarP(&conf.Url, "url", "u", "", "HTTP endpoint w/o path")
-	rootCmd.PersistentFlags().StringVarP(&conf.DbFile, "dbfile", "D", "/tmp/uploads.db", "Bold database file to use")
+	f.BoolVarP(&ShowVersion, "version", "v", false, "Print program version")
+	f.StringVarP(&cfgFile, "config", "c", "", "custom config file")
+	f.BoolVarP(&conf.Debug, "debug", "d", false, "Enable debugging")
+	f.StringVarP(&conf.Listen, "listen", "l", ":8080", "listen to custom ip:port (use [ip]:port for ipv6)")
+	f.StringVarP(&conf.StorageDir, "storagedir", "s", "/tmp", "storage directory for uploaded files")
+	f.StringVarP(&conf.ApiPrefix, "apiprefix", "a", "/api", "API endpoint path")
+	f.StringVarP(&conf.Url, "url", "u", "", "HTTP endpoint w/o path")
+	f.StringVarP(&conf.DbFile, "dbfile", "D", "/tmp/uploads.db", "Bold database file to use")
 
 	// server settings
-	rootCmd.PersistentFlags().BoolVarP(&conf.V4only, "ipv4", "4", false, "Only listen on ipv4")
-	rootCmd.PersistentFlags().BoolVarP(&conf.V6only, "ipv6", "6", false, "Only listen on ipv6")
-	rootCmd.MarkFlagsMutuallyExclusive("ipv4", "ipv6")
+	f.BoolVarP(&conf.V4only, "ipv4", "4", false, "Only listen on ipv4")
+	f.BoolVarP(&conf.V6only, "ipv6", "6", false, "Only listen on ipv6")
 
-	rootCmd.PersistentFlags().BoolVarP(&conf.Prefork, "prefork", "p", false, "Prefork server threads")
-	rootCmd.PersistentFlags().StringVarP(&conf.AppName, "appname", "n", "upd "+conf.GetVersion(), "App name to say hi as")
-	rootCmd.PersistentFlags().IntVarP(&conf.BodyLimit, "bodylimit", "b", 10250000000, "Max allowed upload size in bytes")
-	rootCmd.PersistentFlags().StringSliceVarP(&conf.Apikeys, "apikey", "", []string{}, "Api key[s] to allow access")
-	err := rootCmd.Execute()
-	if err != nil {
-		os.Exit(1)
+	f.BoolVarP(&conf.Prefork, "prefork", "p", false, "Prefork server threads")
+	f.StringVarP(&conf.AppName, "appname", "n", "upd "+conf.GetVersion(), "App name to say hi as")
+	f.IntVarP(&conf.BodyLimit, "bodylimit", "b", 10250000000, "Max allowed upload size in bytes")
+	f.StringSliceP("apikeys", "", []string{}, "Api key[s] to allow access")
+
+	f.Parse(os.Args[1:])
+
+	// exclude -6 and -4
+	if conf.V4only && conf.V6only {
+		return errors.New("You cannot mix -4 and -6!")
 	}
-}
 
-// initialize viper, read config and ENV, bind flags
-func initConfig(cmd *cobra.Command) error {
-	v := viper.New()
-	viper.SetConfigType("hcl")
+	// config provider
+	var k = koanf.New(".")
 
-	if cfgFile != "" {
-		// Use config file from the flag.
-		v.SetConfigFile(cfgFile)
+	// Load the config files provided in the commandline or the default locations
+	configfiles := []string{}
+	configfile, _ := f.GetString("config")
+	if configfile != "" {
+		configfiles = []string{configfile}
 	} else {
-		v.SetConfigName("upd")
-
-		// default location[s]
-		v.AddConfigPath(".")
-		v.AddConfigPath("$HOME/.config/upd")
-		v.AddConfigPath("/etc")
-		v.AddConfigPath("/usr/local/etc")
-
+		configfiles = []string{
+			"/etc/upd.hcl", "/usr/local/etc/upd.hcl", // unix variants
+			filepath.Join(os.Getenv("HOME"), ".config", "upd", "upd.hcl"),
+			filepath.Join(os.Getenv("HOME"), ".upd"),
+			"upd.hcl",
+		}
 	}
 
-	// ignore read errors, report all others
-	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return err
+	for _, cfgfile := range configfiles {
+		if _, err := os.Stat(cfgfile); err == nil {
+			if err := k.Load(file.Provider(cfgfile), hcl.Parser(true)); err != nil {
+				return errors.New("error loading config file: " + err.Error())
+			}
 		}
-		fmt.Println(err)
+		// else: we ignore the file if it doesn't exists
 	}
 
-	fmt.Println("Using config file:", v.ConfigFileUsed())
+	// env overrides config file
+	k.Load(env.Provider("UPD_", ".", func(s string) string {
+		return strings.Replace(strings.ToLower(
+			strings.TrimPrefix(s, "UPD_")), "_", ".", -1)
+	}), nil)
 
-	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
-	v.AutomaticEnv()
-	v.SetEnvPrefix("upd")
+	// command line overrides env
+	if err := k.Load(posflag.Provider(f, ".", k), nil); err != nil {
+		return errors.New("error loading config: " + err.Error())
+	}
 
-	// map flags to viper
-	bindFlags(cmd, v)
+	// fetch values
+	k.Unmarshal("", &conf)
 
-	return nil
-}
+	if conf.Debug {
+		repr.Print(conf)
+	}
 
-// bind flags to viper settings (env+cfgfile)
-func bindFlags(cmd *cobra.Command, v *viper.Viper) {
-	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		// map flag name to config variable
-		configName := f.Name
-
-		// use config variable if flag is not set and config is set
-		if !f.Changed && v.IsSet(configName) {
-			val := v.Get(configName)
-			cmd.Flags().Set(f.Name, fmt.Sprintf("%v", val))
-		}
-	})
+	switch {
+	case ShowVersion:
+		fmt.Println(cfg.Getversion())
+		return nil
+	default:
+		conf.ApplyDefaults()
+		return api.Runserver(&conf, flag.Args())
+	}
 }

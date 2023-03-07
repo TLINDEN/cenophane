@@ -25,25 +25,31 @@ const Version string = "v0.0.1"
 
 var VERSION string // maintained by -x
 
+type Apicontext struct {
+	Context string `koanf:"context"` // aka name or tenant
+	Key     string `koanf:"key"`
+}
+
+// holds the whole configs, filled by commandline flags, env and config file
 type Config struct {
-	ApiPrefix  string
-	Debug      bool
-	Listen     string
-	StorageDir string
-	Url        string
-	DbFile     string
+	ApiPrefix  string `koanf:"apiprefix"`
+	Debug      bool   `koanf:"debug"`
+	Listen     string `koanf:"listen"`
+	StorageDir string `koanf:"storagedir"`
+	Url        string `koanf:"url"`
+	DbFile     string `koanf:"dbfile"`
 
 	// fiber settings, see:
 	// https://docs.gofiber.io/api/fiber/#config
-	Prefork   bool
-	AppName   string
-	BodyLimit int
-	V4only    bool
-	V6only    bool
+	Prefork   bool   `koanf:"prefork"`
+	AppName   string `koanf:"appname"`
+	BodyLimit int    `koanf:"bodylimit"`
+	V4only    bool   `koanf:"ipv4"`
+	V6only    bool   `koanf:"ipv6"`
 	Network   string
 
 	// only settable via config
-	Apikeys []string
+	Apicontext []Apicontext `koanf:"apicontext"`
 }
 
 func Getversion() string {

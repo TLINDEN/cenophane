@@ -14,37 +14,29 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
-package cfg
+package cmd
 
 import (
-	"fmt"
-	//"strings"
+	"github.com/spf13/cobra"
+	"github.com/tlinden/up/upctl/cfg"
+	"github.com/tlinden/up/upctl/lib"
 )
 
-const Version string = "v0.0.1"
+func ListCommand(conf *cfg.Config) *cobra.Command {
+	var listCmd = &cobra.Command{
+		Use:   "list [options] [file ..]",
+		Short: "list uploads",
+		Long:  `List uploads.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// errors at this stage do not cause the usage to be shown
+			cmd.SilenceUsage = true
 
-var VERSION string // maintained by -x
+			return lib.List(conf, args)
+		},
+	}
 
-type Config struct {
-	// globals
-	Endpoint string
-	Debug    bool
-	Retries  int
-	Apikey   string
+	// options
+	listCmd.PersistentFlags().StringVarP(&conf.Apicontext, "apicontext", "", "", "Filter by given API context")
 
-	// upload
-	Expire string
-
-	// list
-	Apicontext string
-}
-
-func Getversion() string {
-	// main program version
-
-	// generated  version string, used  by -v contains  cfg.Version on
-	//  main  branch,   and  cfg.Version-$branch-$lastcommit-$date  on
-	// development branch
-
-	return fmt.Sprintf("This is upctl version %s", VERSION)
+	return listCmd
 }

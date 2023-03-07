@@ -87,6 +87,7 @@ func Execute() {
 	rootCmd.PersistentFlags().StringVarP(&conf.Apikey, "apikey", "a", "", "Api key to use")
 
 	rootCmd.AddCommand(UploadCommand(&conf))
+	rootCmd.AddCommand(ListCommand(&conf))
 
 	err := rootCmd.Execute()
 	if err != nil {

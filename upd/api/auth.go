@@ -20,45 +20,88 @@ package api
 import (
 	"crypto/sha256"
 	"crypto/subtle"
+	"errors"
 	"github.com/gofiber/fiber/v2"
-	//"github.com/gofiber/keyauth/v2"
+	"github.com/gofiber/keyauth/v2"
+	"github.com/tlinden/up/upd/cfg"
 	"regexp"
-	"strings"
 )
 
-var Authurls []*regexp.Regexp
-var Apikeys []string
+// these vars can be savely global, since they don't change ever
+var (
+	errMissing = &fiber.Error{
+		Code:    403000,
+		Message: "Missing API key",
+	}
 
-func AuthSetApikeys(keys []string) {
+	errInvalid = &fiber.Error{
+		Code:    403001,
+		Message: "Invalid API key",
+	}
+
+	Authurls []*regexp.Regexp
+	Apikeys  []cfg.Apicontext
+)
+
+// fill from server: accepted keys
+func AuthSetApikeys(keys []cfg.Apicontext) {
 	Apikeys = keys
 }
 
+// fill from server: endpoints we need to authenticate
 func AuthSetEndpoints(prefix string, version string, endpoints []string) {
 	for _, endpoint := range endpoints {
 		Authurls = append(Authurls, regexp.MustCompile("^"+prefix+version+endpoint))
 	}
 }
 
-func validateAPIKey(c *fiber.Ctx, key string) (bool, error) {
-	for _, apiKey := range Apikeys {
-		hashedAPIKey := sha256.Sum256([]byte(apiKey))
+// make sure we always return JSON encoded errors
+func AuthErrHandler(ctx *fiber.Ctx, err error) error {
+	ctx.Status(fiber.StatusForbidden)
+
+	if err == errMissing {
+		return ctx.JSON(errMissing)
+	}
+
+	return ctx.JSON(errInvalid)
+}
+
+// validator hook, called by fiber via server keyauth.New()
+func AuthValidateAPIKey(c *fiber.Ctx, key string) (bool, error) {
+	// create a new session, it will be thrown away if something fails
+	sess, err := Sessionstore.Get(c)
+	if err != nil {
+		return false, errors.New("Unable to initialize session store from context!")
+	}
+
+	// if Apikeys is empty, the server works unauthenticated
+	// FIXME: maybe always reject?
+	if len(Apikeys) == 0 {
+		sess.Set("apicontext", "default")
+
+		if err := sess.Save(); err != nil {
+			return false, errors.New("Unable to save session store!")
+		}
+
+		return true, nil
+	}
+
+	// actual key comparision
+	for _, apicontext := range Apikeys {
+		hashedAPIKey := sha256.Sum256([]byte(apicontext.Key))
 		hashedKey := sha256.Sum256([]byte(key))
 
 		if subtle.ConstantTimeCompare(hashedAPIKey[:], hashedKey[:]) == 1 {
+			// apikey matches, register apicontext for later use by the handlers
+			sess.Set("apicontext", apicontext.Context)
+
+			if err := sess.Save(); err != nil {
+				return false, errors.New("Unable to save session store!")
+			}
+
 			return true, nil
 		}
 	}
-	return true, nil
-	//return false, keyauth.ErrMissingOrMalformedAPIKey
-}
 
-func authFilter(c *fiber.Ctx) bool {
-	originalURL := strings.ToLower(c.OriginalURL())
-
-	for _, pattern := range Authurls {
-		if pattern.MatchString(originalURL) {
-			return false
-		}
-	}
-	return true
+	return false, keyauth.ErrMissingOrMalformedAPIKey
 }

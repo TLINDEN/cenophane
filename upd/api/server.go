@@ -18,14 +18,21 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package api
 
 import (
+	"errors"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
+	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/gofiber/keyauth/v2"
 	"github.com/tlinden/up/upd/cfg"
 )
 
+// sessions are context specific and can be global savely
+var Sessionstore *session.Store
+
 func Runserver(cfg *cfg.Config, args []string) error {
+	Sessionstore = session.New()
+
 	router := fiber.New(fiber.Config{
 		CaseSensitive: true,
 		StrictRouting: true,
@@ -49,10 +56,11 @@ func Runserver(cfg *cfg.Config, args []string) error {
 	defer db.Close()
 
 	AuthSetEndpoints(cfg.ApiPrefix, ApiVersion, []string{"/file"})
-	AuthSetApikeys(cfg.Apikeys)
+	AuthSetApikeys(cfg.Apicontext)
 
 	auth := keyauth.New(keyauth.Config{
-		Validator: validateAPIKey,
+		Validator:    AuthValidateAPIKey,
+		ErrorHandler: AuthErrHandler,
 	})
 
 	shallExpire := true
@@ -76,6 +84,11 @@ func Runserver(cfg *cfg.Config, args []string) error {
 		api.Delete("/file/:id/", auth, func(c *fiber.Ctx) error {
 			return FileDelete(c, cfg, db)
 		})
+
+		api.Get("/list/", auth, func(c *fiber.Ctx) error {
+			msg, err := List(c, cfg, db)
+			return SendResponse(c, msg, err)
+		})
 	}
 
 	// public routes
@@ -96,11 +109,16 @@ func Runserver(cfg *cfg.Config, args []string) error {
 }
 
 func SendResponse(c *fiber.Ctx, msg string, err error) error {
-	// FIXME:
-	// respect fiber.NewError(500, "Could not process uploaded file[s]!")
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(Result{
-			Code:    fiber.StatusBadRequest,
+		code := fiber.StatusInternalServerError
+
+		var e *fiber.Error
+		if errors.As(err, &e) {
+			code = e.Code
+		}
+
+		return c.Status(code).JSON(Result{
+			Code:    code,
 			Message: err.Error(),
 			Success: false,
 		})

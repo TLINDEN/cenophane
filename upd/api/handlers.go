@@ -18,10 +18,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package api
 
 import (
+	"github.com/alecthomas/repr"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/tlinden/up/upd/cfg"
 
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"time"
@@ -89,8 +91,22 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) (string, error) {
 	}
 	entry.File = Newfilename
 
+	// retrieve the API Context name from the session, assuming is has
+	// been successfully  authenticated. However, if there  are no api
+	//    contexts   defined,    we'll   use    'default'   (set    in
+	// auth.validateAPIKey())
+	sess, err := Sessionstore.Get(c)
+	if err != nil {
+		return "", fiber.NewError(500, "Unable to initialize session store from context!")
+	}
+	apicontext := sess.Get("apicontext")
+	if apicontext != nil {
+		entry.Context = apicontext.(string)
+	}
+
 	Log("Now serving %s from %s/%s", returnUrl, cfg.StorageDir, id)
 	Log("Expire set to: %s", entry.Expire)
+	Log("Uploaded with API-Context %s", entry.Context)
 
 	// we do this in the background to not thwart the server
 	go db.Insert(id, entry)
@@ -166,4 +182,25 @@ func FileDelete(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	return nil
+}
+
+func List(c *fiber.Ctx, cfg *cfg.Config, db *Db) (string, error) {
+	apicontext, err := Untaint(c.Params("apicontext"), `[^a-zA-Z0-9\-]`)
+	if err != nil {
+		return "", fiber.NewError(403, "Invalid api context provided!")
+	}
+
+	uploads, err := db.List(apicontext)
+	repr.Print(uploads)
+	if err != nil {
+		return "", fiber.NewError(500, "Unable to list uploads: "+err.Error())
+	}
+
+	jsonlist, err := json.Marshal(uploads)
+	if err != nil {
+		return "", fiber.NewError(500, "json marshalling failure: "+err.Error())
+	}
+
+	Log(string(jsonlist))
+	return string(jsonlist), nil
 }

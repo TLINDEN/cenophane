@@ -13,6 +13,11 @@ Simple standalone file upload server with api and cli
 - use global map of api endpoints like /file/get/ etc
 - create cobra client commands (upload, list, delete, edit)
 
+## BUGS
+
+### upctl HTTP 413 weird behavior
+
+- with -d reports correctly the 413, w/o it, it reports the timeout before.
 
 ## curl commands
 

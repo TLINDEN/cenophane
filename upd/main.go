@@ -19,8 +19,12 @@ package main
 
 import (
 	"github.com/tlinden/up/upd/cmd"
+	"log"
 )
 
 func main() {
-	cmd.Execute()
+	err := cmd.Execute()
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
 }
