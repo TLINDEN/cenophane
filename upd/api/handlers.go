@@ -23,7 +23,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/tlinden/up/upd/cfg"
 
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"time"
@@ -77,7 +76,7 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) (string, error) {
 	if len(formdata.Expire) == 0 {
 		entry.Expire = "asap"
 	} else {
-		ex, err := Untaint(formdata.Expire, `[^dhms0-9]`) // duration or asap allowed
+		ex, err := Untaint(formdata.Expire, cfg.RegDuration) // duration or asap allowed
 		if err != nil {
 			return "", err
 		}
@@ -119,7 +118,7 @@ func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) error {
 
 	// we ignore c.Params("file"), cause  it may be malign. Also we've
 	// got it in the db anyway
-	id, err := Untaint(c.Params("id"), `[^a-zA-Z0-9\-]`)
+	id, err := Untaint(c.Params("id"), cfg.RegKey)
 	if err != nil {
 		return fiber.NewError(403, "Invalid id provided!")
 	}
@@ -157,14 +156,10 @@ func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) error {
 	return err
 }
 
-type Id struct {
-	Id string `json:"name" xml:"name" form:"name"`
-}
+// delete file, id dir and db entry
+func DeleteUpload(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 
-func FileDelete(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
-	// delete file, id dir and db entry
-
-	id, err := Untaint(c.Params("id"), `[^a-zA-Z0-9\-]`)
+	id, err := Untaint(c.Params("id"), cfg.RegKey)
 	if err != nil {
 		return fiber.NewError(403, "Invalid id provided!")
 	}
@@ -184,23 +179,24 @@ func FileDelete(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	return nil
 }
 
-func List(c *fiber.Ctx, cfg *cfg.Config, db *Db) (string, error) {
-	apicontext, err := Untaint(c.Params("apicontext"), `[^a-zA-Z0-9\-]`)
+// returns the whole list + error code, no post processing by server
+func List(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
+	apicontext, err := Untaint(c.Params("apicontext"), cfg.RegKey)
 	if err != nil {
-		return "", fiber.NewError(403, "Invalid api context provided!")
+		return JsonStatus(c, fiber.StatusForbidden,
+			"Invalid api context provided!")
 	}
 
 	uploads, err := db.List(apicontext)
 	repr.Print(uploads)
 	if err != nil {
-		return "", fiber.NewError(500, "Unable to list uploads: "+err.Error())
+		return JsonStatus(c, fiber.StatusForbidden,
+			"Unable to list uploads: "+err.Error())
 	}
 
-	jsonlist, err := json.Marshal(uploads)
-	if err != nil {
-		return "", fiber.NewError(500, "json marshalling failure: "+err.Error())
-	}
+	// if we reached this point we can signal success
+	uploads.Success = true
+	uploads.Code = fiber.StatusOK
 
-	Log(string(jsonlist))
-	return string(jsonlist), nil
+	return c.Status(fiber.StatusOK).JSON(uploads)
 }

@@ -43,6 +43,22 @@ type ListParams struct {
 	Apicontext string `json:"apicontext"`
 }
 
+type Upload struct {
+	Id       string    `json:"id"`
+	Expire   string    `json:"expire"`
+	File     string    `json:"file"`    // final filename (visible to the downloader)
+	Members  []string  `json:"members"` // contains multiple files, so File is an archive
+	Uploaded Timestamp `json:"uploaded"`
+	Context  string    `json:"context"`
+}
+
+type Uploads struct {
+	Entries []*Upload `json:"uploads"`
+	Success bool      `json:"success"`
+	Message string    `json:"message"`
+	Code    int       `json:"code"`
+}
+
 func Setup(c *cfg.Config, path string) *Request {
 	client := req.C()
 	if c.Debug {
@@ -107,7 +123,7 @@ func GatherFiles(rq *Request, args []string) error {
 	return nil
 }
 
-func Upload(c *cfg.Config, args []string) error {
+func UploadFiles(c *cfg.Config, args []string) error {
 	// setup url, req.Request, timeout handling etc
 	rq := Setup(c, "/file/")
 
@@ -165,7 +181,10 @@ func HandleResponse(c *cfg.Config, resp *req.Response) error {
 	}
 
 	// all right
-	fmt.Println(r.Message)
+	if r.Message != "" {
+		fmt.Println(r.Message)
+	}
+
 	return nil
 }
 
@@ -177,11 +196,46 @@ func List(c *cfg.Config, args []string) error {
 		SetBodyJsonMarshal(params).
 		Get(rq.Url)
 
-	fmt.Println("")
-
 	if err != nil {
 		return err
 	}
 
-	return HandleResponse(c, resp)
+	uploads := Uploads{}
+
+	if err := json.Unmarshal([]byte(resp.String()), &uploads); err != nil {
+		return errors.New("Could not unmarshall JSON response: " + err.Error())
+	}
+
+	if !uploads.Success {
+		return errors.New(uploads.Message)
+	}
+
+	// tablewriter
+	data := [][]string{}
+	for _, entry := range uploads.Entries {
+		data = append(data, []string{
+			entry.Id, entry.Expire, entry.Context, entry.Uploaded.Format("2006-01-02 15:04:05"),
+		})
+	}
+	return WriteTable([]string{"ID", "EXPIRE", "CONTEXT", "UPLOADED"}, data)
+}
+
+func Delete(c *cfg.Config, args []string) error {
+	for _, id := range args {
+		rq := Setup(c, "/file/"+id+"/")
+
+		resp, err := rq.R.Delete(rq.Url)
+
+		if err != nil {
+			return err
+		}
+
+		if err := HandleResponse(c, resp); err != nil {
+			return err
+		}
+
+		fmt.Printf("Upload %s successfully deleted.\n", id)
+	}
+
+	return nil
 }

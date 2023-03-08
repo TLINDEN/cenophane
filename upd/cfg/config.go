@@ -18,7 +18,9 @@ package cfg
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
+	"time"
 )
 
 const Version string = "v0.0.1"
@@ -50,6 +52,13 @@ type Config struct {
 
 	// only settable via config
 	Apicontext []Apicontext `koanf:"apicontext"`
+
+	// Internals only
+	RegNormalizedFilename *regexp.Regexp
+	RegDuration           *regexp.Regexp
+	RegKey                *regexp.Regexp
+	CleanInterval         time.Duration
+	DefaultExpire         int
 }
 
 func Getversion() string {
@@ -88,4 +97,11 @@ func (c *Config) ApplyDefaults() {
 			c.Network = "tcp" // dual stack
 		}
 	}
+
+	c.RegNormalizedFilename = regexp.MustCompile(`[^\w\d\-_\.]`)
+	c.RegDuration = regexp.MustCompile(`[^dhms0-9]`)
+	c.RegKey = regexp.MustCompile(`[^a-zA-Z0-9\-]`)
+
+	c.CleanInterval = 10 * time.Second
+	c.DefaultExpire = 30 * 86400 // 1 month
 }

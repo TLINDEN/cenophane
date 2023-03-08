@@ -23,28 +23,25 @@ import (
 	"github.com/tlinden/up/upctl/lib"
 )
 
-func UploadCommand(conf *cfg.Config) *cobra.Command {
-	var uploadCmd = &cobra.Command{
-		Use:   "upload [options] [file ..]",
-		Short: "upload files",
-		Long:  `Upload files to an upload api.`,
+func DeleteCommand(conf *cfg.Config) *cobra.Command {
+	var deleteCmd = &cobra.Command{
+		Use:   "delete [options] <id>",
+		Short: "delete an upload",
+		Long:  `Delete an upload identified by its id`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return errors.New("No files specified to upload!")
+				return errors.New("No id specified to delete!")
 			}
 
 			// errors at this stage do not cause the usage to be shown
 			cmd.SilenceUsage = true
 
-			return lib.UploadFiles(conf, args)
+			return lib.Delete(conf, args)
 		},
 	}
 
-	// options
-	uploadCmd.PersistentFlags().StringVarP(&conf.Expire, "expire", "e", "", "Expire setting: asap or duration (accepted shortcuts: dmh)")
+	deleteCmd.Aliases = append(deleteCmd.Aliases, "rm")
+	deleteCmd.Aliases = append(deleteCmd.Aliases, "d")
 
-	uploadCmd.Aliases = append(uploadCmd.Aliases, "up")
-	uploadCmd.Aliases = append(uploadCmd.Aliases, "u")
-
-	return uploadCmd
+	return deleteCmd
 }

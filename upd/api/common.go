@@ -20,6 +20,7 @@ package api
 import (
 	"errors"
 	"fmt"
+	"github.com/tlinden/up/upd/cfg"
 	"regexp"
 	"strconv"
 	"time"
@@ -39,6 +40,29 @@ type Meta struct {
 	Expire string `json:"expire" form:"expire"`
 }
 
+// stores 1 upload object, gets into db
+type Upload struct {
+	Id       string    `json:"id"`
+	Expire   string    `json:"expire"`
+	File     string    `json:"file"`    // final filename (visible to the downloader)
+	Members  []string  `json:"members"` // contains multiple files, so File is an archive
+	Uploaded Timestamp `json:"uploaded"`
+	Context  string    `json:"context"`
+}
+
+// this one is also used for marshalling to the client
+type Uploads struct {
+	Entries []*Upload `json:"uploads"`
+
+	// integrate the Result struct so we can signal success
+	Result
+}
+
+// incoming id
+type Id struct {
+	Id string `json:"name" xml:"name" form:"name"`
+}
+
 // vaious helbers
 func Log(format string, values ...any) {
 	fmt.Printf("[DEBUG] "+format+"\n", values...)
@@ -47,12 +71,6 @@ func Log(format string, values ...any) {
 func Ts() string {
 	t := time.Now()
 	return t.Format("2006-01-02-15-04-")
-}
-
-func NormalizeFilename(file string) string {
-	r := regexp.MustCompile(`[^\w\d\-_\\.]`)
-
-	return Ts() + r.ReplaceAllString(file, "")
 }
 
 /*
@@ -96,9 +114,16 @@ func duration2int(duration string) int {
 aka:
    if(now - start) >= duration { time is up}
 */
-func IsExpired(start time.Time, duration string) bool {
+func IsExpired(conf *cfg.Config, start time.Time, duration string) bool {
+	var expiretime int // seconds
+
 	now := time.Now()
-	expiretime := duration2int(duration)
+
+	if duration == "asap" {
+		expiretime = conf.DefaultExpire
+	} else {
+		expiretime = duration2int(duration)
+	}
 
 	if now.Unix()-start.Unix() >= int64(expiretime) {
 		return true
@@ -120,9 +145,8 @@ func IsExpired(start time.Time, duration string) bool {
    it. You may  ignore the error and use the  untainted string or bail
    out.
 */
-func Untaint(input string, wanted string) (string, error) {
-	re := regexp.MustCompile(wanted)
-	untainted := re.ReplaceAllString(input, "")
+func Untaint(input string, wanted *regexp.Regexp) (string, error) {
+	untainted := wanted.ReplaceAllString(input, "")
 
 	if len(untainted) != len(input) {
 		return untainted, errors.New("Invalid input string!")

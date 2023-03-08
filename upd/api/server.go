@@ -20,6 +20,8 @@ package api
 import (
 	"errors"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/compress"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/gofiber/fiber/v2/middleware/session"
@@ -30,84 +32,140 @@ import (
 // sessions are context specific and can be global savely
 var Sessionstore *session.Store
 
-func Runserver(cfg *cfg.Config, args []string) error {
+const shallExpire = true
+
+func Runserver(conf *cfg.Config, args []string) error {
+	// required for authenticated routes, used to store the api context
 	Sessionstore = session.New()
 
-	router := fiber.New(fiber.Config{
-		CaseSensitive: true,
-		StrictRouting: true,
-		Immutable:     true,
-		Prefork:       cfg.Prefork,
-		ServerHeader:  "upd",
-		AppName:       cfg.AppName,
-		BodyLimit:     cfg.BodyLimit,
-		Network:       cfg.Network,
-	})
-
-	router.Use(requestid.New())
-	router.Use(logger.New(logger.Config{
-		Format: "${pid} ${locals:requestid} ${status} - ${method} ${path}​\n",
-	}))
-
-	db, err := NewDb(cfg.DbFile)
+	// bbolt db setup
+	db, err := NewDb(conf.DbFile)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	AuthSetEndpoints(cfg.ApiPrefix, ApiVersion, []string{"/file"})
-	AuthSetApikeys(cfg.Apicontext)
+	// setup authenticated endpoints
+	auth := SetupAuthStore(conf)
 
-	auth := keyauth.New(keyauth.Config{
-		Validator:    AuthValidateAPIKey,
-		ErrorHandler: AuthErrHandler,
-	})
+	// setup api server
+	router := SetupServer(conf)
 
-	shallExpire := true
-
-	api := router.Group(cfg.ApiPrefix + ApiVersion)
+	// authenticated routes
+	api := router.Group(conf.ApiPrefix + ApiVersion)
 	{
 		// authenticated routes
 		api.Post("/file/", auth, func(c *fiber.Ctx) error {
-			msg, err := FilePut(c, cfg, db)
+			msg, err := FilePut(c, conf, db)
 			return SendResponse(c, msg, err)
 		})
 
 		api.Get("/file/:id/:file", auth, func(c *fiber.Ctx) error {
-			return FileGet(c, cfg, db)
+			return FileGet(c, conf, db)
 		})
 
 		api.Get("/file/:id/", auth, func(c *fiber.Ctx) error {
-			return FileGet(c, cfg, db)
+			return FileGet(c, conf, db)
 		})
 
 		api.Delete("/file/:id/", auth, func(c *fiber.Ctx) error {
-			return FileDelete(c, cfg, db)
+			err := DeleteUpload(c, conf, db)
+			return SendResponse(c, "", err)
 		})
 
 		api.Get("/list/", auth, func(c *fiber.Ctx) error {
-			msg, err := List(c, cfg, db)
-			return SendResponse(c, msg, err)
+			return List(c, conf, db)
 		})
 	}
 
 	// public routes
-	router.Get("/", func(c *fiber.Ctx) error {
-		return c.Send([]byte("welcome to upload api, use /api enpoint!"))
+	{
+		router.Get("/", func(c *fiber.Ctx) error {
+			return c.Send([]byte("welcome to upload api, use /api enpoint!"))
+		})
+
+		router.Get("/download/:id/:file", func(c *fiber.Ctx) error {
+			return FileGet(c, conf, db, shallExpire)
+		})
+
+		router.Get("/download/:id/", func(c *fiber.Ctx) error {
+			return FileGet(c, conf, db, shallExpire)
+		})
+	}
+
+	// setup cleaner
+	quitcleaner := BackgroundCleaner(conf, db)
+
+	router.Hooks().OnShutdown(func() error {
+		Log("Shutting down cleaner")
+		close(quitcleaner)
+		return nil
 	})
 
-	router.Get("/download/:id/:file", func(c *fiber.Ctx) error {
-		return FileGet(c, cfg, db, shallExpire)
-	})
-
-	router.Get("/download/:id/", func(c *fiber.Ctx) error {
-		return FileGet(c, cfg, db, shallExpire)
-	})
-
-	return router.Listen(cfg.Listen)
-
+	return router.Listen(conf.Listen)
 }
 
+func SetupAuthStore(conf *cfg.Config) func(*fiber.Ctx) error {
+	AuthSetEndpoints(conf.ApiPrefix, ApiVersion, []string{"/file"})
+	AuthSetApikeys(conf.Apicontext)
+
+	return keyauth.New(keyauth.Config{
+		Validator:    AuthValidateAPIKey,
+		ErrorHandler: AuthErrHandler,
+	})
+}
+
+func SetupServer(conf *cfg.Config) *fiber.App {
+	router := fiber.New(fiber.Config{
+		CaseSensitive: true,
+		StrictRouting: true,
+		Immutable:     true,
+		Prefork:       conf.Prefork,
+		ServerHeader:  "upd",
+		AppName:       conf.AppName,
+		BodyLimit:     conf.BodyLimit,
+		Network:       conf.Network,
+	})
+
+	router.Use(requestid.New())
+
+	router.Use(logger.New(logger.Config{
+		Format: "${pid} ${locals:requestid} ${status} - ${method} ${path}​\n",
+	}))
+
+	router.Use(cors.New(cors.Config{
+		AllowMethods:  "GET,PUT,POST,DELETE",
+		ExposeHeaders: "Content-Type,Authorization,Accept",
+	}))
+
+	router.Use(compress.New(compress.Config{
+		Level: compress.LevelBestSpeed,
+	}))
+
+	return router
+}
+
+/*
+   Wrapper to respond with proper json status, message and code,
+   shall be prepared and called by the handlers directly.
+*/
+func JsonStatus(c *fiber.Ctx, code int, msg string) error {
+	success := true
+
+	if code != fiber.StatusOK {
+		success = false
+	}
+
+	return c.Status(code).JSON(Result{
+		Code:    code,
+		Message: msg,
+		Success: success,
+	})
+}
+
+/*
+   Used for non json-aware handlers, called by server
+*/
 func SendResponse(c *fiber.Ctx, msg string, err error) error {
 	if err != nil {
 		code := fiber.StatusInternalServerError

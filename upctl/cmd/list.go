@@ -38,5 +38,8 @@ func ListCommand(conf *cfg.Config) *cobra.Command {
 	// options
 	listCmd.PersistentFlags().StringVarP(&conf.Apicontext, "apicontext", "", "", "Filter by given API context")
 
+	listCmd.Aliases = append(listCmd.Aliases, "ls")
+	listCmd.Aliases = append(listCmd.Aliases, "l")
+
 	return listCmd
 }

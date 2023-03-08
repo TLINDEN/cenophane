@@ -20,7 +20,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/alecthomas/repr"
+	//"github.com/alecthomas/repr"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -29,20 +29,6 @@ const Bucket string = "uploads"
 // wrapper for bolt db
 type Db struct {
 	bolt *bolt.DB
-}
-
-// stores 1 upload object, gets into db
-type Upload struct {
-	Id       string    `json:"id"`
-	Expire   string    `json:"expire"`
-	File     string    `json:"file"`    // final filename (visible to the downloader)
-	Members  []string  `json:"members"` // contains multiple files, so File is an archive
-	Uploaded Timestamp `json:"uploaded"`
-	Context  string    `json:"context"`
-}
-
-type Uploads struct {
-	Entries []*Upload `json:"uploads"`
 }
 
 func NewDb(file string) (*Db, error) {
@@ -89,6 +75,11 @@ func (db *Db) Lookup(id string) (Upload, error) {
 
 	err := db.bolt.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(Bucket))
+
+		if bucket == nil {
+			return fmt.Errorf("id %s not found", id)
+		}
+
 		j := bucket.Get([]byte(id))
 
 		if len(j) == 0 {
@@ -114,6 +105,10 @@ func (db *Db) Delete(id string) error {
 	err := db.bolt.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(Bucket))
 
+		if bucket == nil {
+			return fmt.Errorf("id %s not found", id)
+		}
+
 		j := bucket.Get([]byte(id))
 
 		if len(j) == 0 {
@@ -136,6 +131,10 @@ func (db *Db) List(apicontext string) (*Uploads, error) {
 
 	err := db.bolt.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(Bucket))
+		if bucket == nil {
+			return nil
+		}
+
 		err := bucket.ForEach(func(id, j []byte) error {
 			upload := &Upload{}
 			if err := json.Unmarshal(j, &upload); err != nil {

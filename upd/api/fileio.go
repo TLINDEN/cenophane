@@ -43,7 +43,7 @@ func cleanup(dir string) {
 func SaveFormFiles(c *fiber.Ctx, cfg *cfg.Config, files []*multipart.FileHeader, id string) ([]string, error) {
 	members := []string{}
 	for _, file := range files {
-		filename := NormalizeFilename(filepath.Base(file.Filename))
+		filename, _ := Untaint(filepath.Base(file.Filename), cfg.RegNormalizedFilename)
 		path := filepath.Join(cfg.StorageDir, id, filename)
 		members = append(members, filename)
 		Log("Received: %s => %s/%s", file.Filename, id, filename)
