@@ -34,18 +34,18 @@ type Apicontext struct {
 
 // holds the whole configs, filled by commandline flags, env and config file
 type Config struct {
-	ApiPrefix  string `koanf:"apiprefix"`
+	ApiPrefix  string `koanf:"apiprefix"` // path prefix
 	Debug      bool   `koanf:"debug"`
-	Listen     string `koanf:"listen"`
-	StorageDir string `koanf:"storagedir"`
-	Url        string `koanf:"url"`
+	Listen     string `koanf:"listen"`     // [host]:port
+	StorageDir string `koanf:"storagedir"` // db and uploads go there
+	Url        string `koanf:"url"`        // public visible url, might be different from Listen
 	DbFile     string `koanf:"dbfile"`
 
 	// fiber settings, see:
 	// https://docs.gofiber.io/api/fiber/#config
-	Prefork   bool   `koanf:"prefork"`
-	AppName   string `koanf:"appname"`
-	BodyLimit int    `koanf:"bodylimit"`
+	Prefork   bool   `koanf:"prefork"`   // default: nope
+	AppName   string `koanf:"appname"`   // "upd"
+	BodyLimit int    `koanf:"bodylimit"` // much
 	V4only    bool   `koanf:"ipv4"`
 	V6only    bool   `koanf:"ipv6"`
 	Network   string
@@ -86,6 +86,8 @@ func (c *Config) ApplyDefaults() {
 	}
 
 	switch {
+	case c.V4only && c.V6only:
+		c.Network = "tcp" // dual stack
 	case c.V4only:
 		c.Network = "tcp4"
 	case c.V6only:

@@ -18,7 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package api
 
 import (
-	"github.com/alecthomas/repr"
+	//"github.com/alecthomas/repr"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/tlinden/up/upd/cfg"
@@ -161,11 +161,13 @@ func DeleteUpload(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 
 	id, err := Untaint(c.Params("id"), cfg.RegKey)
 	if err != nil {
-		return fiber.NewError(403, "Invalid id provided!")
+		return JsonStatus(c, fiber.StatusForbidden,
+			"Invalid id provided!")
 	}
 
 	if len(id) == 0 {
-		return fiber.NewError(403, "No id given!")
+		return JsonStatus(c, fiber.StatusForbidden,
+			"No id specified!")
 	}
 
 	cleanup(filepath.Join(cfg.StorageDir, id))
@@ -173,7 +175,8 @@ func DeleteUpload(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	err = db.Delete(id)
 	if err != nil {
 		// non existent db entry with that id, or other db error, see logs
-		return fiber.NewError(404, "No upload with that id could be found!")
+		return JsonStatus(c, fiber.StatusForbidden,
+			"No upload with that id could be found!")
 	}
 
 	return nil
@@ -188,10 +191,30 @@ func List(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	uploads, err := db.List(apicontext)
-	repr.Print(uploads)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"Unable to list uploads: "+err.Error())
+	}
+
+	// if we reached this point we can signal success
+	uploads.Success = true
+	uploads.Code = fiber.StatusOK
+
+	return c.Status(fiber.StatusOK).JSON(uploads)
+}
+
+// returns just one upload obj + error code, no post processing by server
+func Describe(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
+	id, err := Untaint(c.Params("id"), cfg.RegKey)
+	if err != nil {
+		return JsonStatus(c, fiber.StatusForbidden,
+			"Invalid id provided!")
+	}
+
+	uploads, err := db.Get(id)
+	if err != nil {
+		return JsonStatus(c, fiber.StatusForbidden,
+			"No upload with that id could be found!")
 	}
 
 	// if we reached this point we can signal success

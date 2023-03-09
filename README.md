@@ -5,8 +5,10 @@ Simple standalone file upload server with api and cli
 
 - also serve a html upload page
 - add metrics
-- create cobra client commands (upload, list, delete, edit)
 - add authorization checks for delete and list based on apicontext
+- change output of upload, use the same as list
+- do not manually generate output urls, use fiber.GetRoute()
+- import code from upd into upctl to avoid duplicates, like the time stuff we've now
 
 ## BUGS
 

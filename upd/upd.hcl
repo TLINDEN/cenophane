@@ -13,4 +13,4 @@ apicontext = [
   }
 ]
 
-
+url = "https://sokrates.daemon.de"

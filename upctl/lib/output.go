@@ -18,8 +18,10 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package lib
 
 import (
+	"fmt"
 	"github.com/olekukonko/tablewriter"
 	"os"
+	"time"
 )
 
 func WriteTable(headers []string, data [][]string) error {
@@ -47,4 +49,30 @@ func WriteTable(headers []string, data [][]string) error {
 	table.Render()
 
 	return nil
+}
+
+func prepareExpire(expire string, start Timestamp) string {
+	switch expire {
+	case "asap":
+		return "On first access"
+	default:
+		return time.Unix(start.Unix()+int64(duration2int(expire)), 0).Format("2006-01-02 15:04:05")
+	}
+
+	return ""
+}
+
+func WriteExtended(uploads *Uploads) {
+	format := fmt.Sprintf("%%%ds: %%s\n", Maxwidth)
+
+	// we shall only have 1 element, however, if we ever support more, here we go
+	for _, entry := range uploads.Entries {
+		expire := prepareExpire(entry.Expire, entry.Uploaded)
+		fmt.Printf(format, "Id", entry.Id)
+		fmt.Printf(format, "Expire", expire)
+		fmt.Printf(format, "Context", entry.Context)
+		fmt.Printf(format, "Uploaded", entry.Uploaded)
+		fmt.Printf(format, "Filename", entry.File)
+		fmt.Println()
+	}
 }

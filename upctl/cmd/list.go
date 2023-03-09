@@ -25,7 +25,7 @@ import (
 func ListCommand(conf *cfg.Config) *cobra.Command {
 	var listCmd = &cobra.Command{
 		Use:   "list [options] [file ..]",
-		Short: "list uploads",
+		Short: "List uploads",
 		Long:  `List uploads.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// errors at this stage do not cause the usage to be shown

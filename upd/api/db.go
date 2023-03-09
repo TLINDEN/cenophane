@@ -157,3 +157,31 @@ func (db *Db) List(apicontext string) (*Uploads, error) {
 
 	return uploads, err
 }
+
+// we only return one obj here, but could return more later
+func (db *Db) Get(id string) (*Uploads, error) {
+	uploads := &Uploads{}
+
+	err := db.bolt.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(Bucket))
+		if bucket == nil {
+			return nil
+		}
+
+		j := bucket.Get([]byte(id))
+		if j == nil {
+			return fmt.Errorf("No upload object found with id %s", id)
+		}
+
+		upload := &Upload{}
+		if err := json.Unmarshal(j, &upload); err != nil {
+			return fmt.Errorf("unable to unmarshal json: %s", err)
+		}
+
+		uploads.Entries = append(uploads.Entries, upload)
+
+		return nil
+	})
+
+	return uploads, err
+}

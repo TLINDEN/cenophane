@@ -59,6 +59,8 @@ type Uploads struct {
 	Code    int       `json:"code"`
 }
 
+const Maxwidth = 10
+
 func Setup(c *cfg.Config, path string) *Request {
 	client := req.C()
 	if c.Debug {
@@ -236,6 +238,31 @@ func Delete(c *cfg.Config, args []string) error {
 
 		fmt.Printf("Upload %s successfully deleted.\n", id)
 	}
+
+	return nil
+}
+
+func Describe(c *cfg.Config, args []string) error {
+	id := args[0] // we describe only 1 object
+
+	rq := Setup(c, "/upload/"+id+"/")
+	resp, err := rq.R.Get(rq.Url)
+
+	if err != nil {
+		return err
+	}
+
+	uploads := Uploads{}
+
+	if err := json.Unmarshal([]byte(resp.String()), &uploads); err != nil {
+		return errors.New("Could not unmarshall JSON response: " + err.Error())
+	}
+
+	if !uploads.Success {
+		return errors.New(uploads.Message)
+	}
+
+	WriteExtended(&uploads)
 
 	return nil
 }

@@ -76,6 +76,10 @@ func Runserver(conf *cfg.Config, args []string) error {
 		api.Get("/list/", auth, func(c *fiber.Ctx) error {
 			return List(c, conf, db)
 		})
+
+		api.Get("/upload/:id/", auth, func(c *fiber.Ctx) error {
+			return Describe(c, conf, db)
+		})
 	}
 
 	// public routes

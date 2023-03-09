@@ -23,11 +23,11 @@ import (
 	"github.com/tlinden/up/upctl/lib"
 )
 
-func DeleteCommand(conf *cfg.Config) *cobra.Command {
-	var deleteCmd = &cobra.Command{
-		Use:   "delete [options] <id>",
-		Short: "Delete an upload",
-		Long:  `Delete an upload identified by its id`,
+func DescribeCommand(conf *cfg.Config) *cobra.Command {
+	var listCmd = &cobra.Command{
+		Use:   "describe [options] upload-id",
+		Long:  "Show detailed informations about an upload object.",
+		Short: `Describe an upload.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return errors.New("No id specified to delete!")
@@ -36,12 +36,13 @@ func DeleteCommand(conf *cfg.Config) *cobra.Command {
 			// errors at this stage do not cause the usage to be shown
 			cmd.SilenceUsage = true
 
-			return lib.Delete(conf, args)
+			return lib.Describe(conf, args)
 		},
 	}
 
-	deleteCmd.Aliases = append(deleteCmd.Aliases, "rm")
-	deleteCmd.Aliases = append(deleteCmd.Aliases, "d")
+	listCmd.Aliases = append(listCmd.Aliases, "des")
+	listCmd.Aliases = append(listCmd.Aliases, "info")
+	listCmd.Aliases = append(listCmd.Aliases, "i")
 
-	return deleteCmd
+	return listCmd
 }

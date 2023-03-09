@@ -26,7 +26,7 @@ import (
 func UploadCommand(conf *cfg.Config) *cobra.Command {
 	var uploadCmd = &cobra.Command{
 		Use:   "upload [options] [file ..]",
-		Short: "upload files",
+		Short: "Upload files",
 		Long:  `Upload files to an upload api.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
