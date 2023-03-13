@@ -145,17 +145,15 @@ func UploadFiles(c *cfg.Config, args []string) error {
 		}, 10*time.Millisecond).
 		Post(rq.Url)
 
-	fmt.Println("")
-
 	if err != nil {
 		return err
 	}
 
-	return HandleResponse(c, resp)
+	return printUploadsResponse(resp)
 }
 
 func HandleResponse(c *cfg.Config, resp *req.Response) error {
-	// we expect a json response
+	// we expect a json response, extract the error, if any
 	r := Response{}
 
 	if err := json.Unmarshal([]byte(resp.String()), &r); err != nil {
@@ -252,6 +250,10 @@ func Describe(c *cfg.Config, args []string) error {
 		return err
 	}
 
+	return printUploadsResponse(resp)
+}
+
+func printUploadsResponse(resp *req.Response) error {
 	uploads := Uploads{}
 
 	if err := json.Unmarshal([]byte(resp.String()), &uploads); err != nil {
@@ -260,6 +262,10 @@ func Describe(c *cfg.Config, args []string) error {
 
 	if !uploads.Success {
 		return errors.New(uploads.Message)
+	}
+
+	if uploads.Message != "" {
+		fmt.Println(uploads.Message)
 	}
 
 	WriteExtended(&uploads)

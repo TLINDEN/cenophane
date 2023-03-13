@@ -56,8 +56,7 @@ func Runserver(conf *cfg.Config, args []string) error {
 	{
 		// authenticated routes
 		api.Post("/file/", auth, func(c *fiber.Ctx) error {
-			msg, err := FilePut(c, conf, db)
-			return SendResponse(c, msg, err)
+			return FilePut(c, conf, db)
 		})
 
 		api.Get("/file/:id/:file", auth, func(c *fiber.Ctx) error {

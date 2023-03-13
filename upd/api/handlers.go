@@ -28,7 +28,7 @@ import (
 	"time"
 )
 
-func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) (string, error) {
+func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	// supports upload of multiple files with:
 	//
 	// curl -X POST localhost:8080/putfile \
@@ -51,8 +51,8 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) (string, error) {
 	// fetch auxiliary form data
 	form, err := c.MultipartForm()
 	if err != nil {
-		Log("multipart error %s", err.Error())
-		return "", err
+		return JsonStatus(c, fiber.StatusForbidden,
+			"mime/multipart error "+err.Error())
 	}
 
 	// init upload obj
@@ -62,14 +62,15 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) (string, error) {
 	files := form.File["upload[]"]
 	members, err := SaveFormFiles(c, cfg, files, id)
 	if err != nil {
-		return "", fiber.NewError(500, "Could not store uploaded file[s]!")
+		return JsonStatus(c, fiber.StatusInternalServerError,
+			"Could not store uploaded file[s]: "+err.Error())
 	}
 	entry.Members = members
 
 	// extract auxilliary form data (expire field et al)
 	if err := c.BodyParser(&formdata); err != nil {
-		Log("bodyparser error %s", err.Error())
-		return "", err
+		return JsonStatus(c, fiber.StatusInternalServerError,
+			"bodyparser error : "+err.Error())
 	}
 
 	// post process expire
@@ -78,7 +79,8 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) (string, error) {
 	} else {
 		ex, err := Untaint(formdata.Expire, cfg.RegDuration) // duration or asap allowed
 		if err != nil {
-			return "", err
+			return JsonStatus(c, fiber.StatusForbidden,
+				"Invalid data: "+err.Error())
 		}
 		entry.Expire = ex
 	}
@@ -86,7 +88,8 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) (string, error) {
 	// get url [and zip if there are multiple files]
 	returnUrl, Newfilename, err := ProcessFormFiles(cfg, entry.Members, id)
 	if err != nil {
-		return "", fiber.NewError(500, "Could not process uploaded file[s]!")
+		return JsonStatus(c, fiber.StatusInternalServerError,
+			"Could not process uploaded file[s]: "+err.Error())
 	}
 	entry.File = Newfilename
 
@@ -96,7 +99,8 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) (string, error) {
 	// auth.validateAPIKey())
 	sess, err := Sessionstore.Get(c)
 	if err != nil {
-		return "", fiber.NewError(500, "Unable to initialize session store from context!")
+		return JsonStatus(c, fiber.StatusInternalServerError,
+			"Unable to initialize session store from context: "+err.Error())
 	}
 	apicontext := sess.Get("apicontext")
 	if apicontext != nil {
@@ -110,7 +114,12 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) (string, error) {
 	// we do this in the background to not thwart the server
 	go db.Insert(id, entry)
 
-	return returnUrl, nil
+	// everything went well so far
+	res := &Uploads{Entries: []*Upload{entry}}
+	res.Success = true
+	res.Message = "Download url: " + returnUrl
+	res.Code = fiber.StatusOK
+	return c.Status(fiber.StatusOK).JSON(res)
 }
 
 func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) error {

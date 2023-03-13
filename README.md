@@ -4,11 +4,12 @@ Simple standalone file upload server with api and cli
 ## TODO
 
 - also serve a html upload page
-- add metrics
+- add metrics (as in https://github.com/ansrivas/fiberprometheus)
 - add authorization checks for delete and list based on apicontext
-- change output of upload, use the same as list
 - do not manually generate output urls, use fiber.GetRoute()
 - import code from upd into upctl to avoid duplicates, like the time stuff we've now
+- upd: https://docs.gofiber.io/guide/error-handling/ to always use json output
+- upctl: get rid of HandleResponse(), used only once anyway
 
 ## BUGS
 
