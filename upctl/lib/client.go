@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/imroc/req/v3"
+	"github.com/schollz/progressbar/v3"
 	"github.com/tlinden/up/upctl/cfg"
 	"os"
 	"path/filepath"
@@ -134,14 +135,20 @@ func UploadFiles(c *cfg.Config, args []string) error {
 		return err
 	}
 
+	// progres bar
+	bar := progressbar.Default(100)
+	var left float64
+
 	// actual post w/ settings
 	resp, err := rq.R.
 		SetFormData(map[string]string{
 			"expire": c.Expire,
 		}).
 		SetUploadCallbackWithInterval(func(info req.UploadInfo) {
-			fmt.Printf("\r%q uploaded %.2f%%", info.FileName, float64(info.UploadedSize)/float64(info.FileSize)*100.0)
-			fmt.Println()
+			left = float64(info.UploadedSize) / float64(info.FileSize) * 100.0
+			bar.Add(int(left))
+			//fmt.Printf("\r%q uploaded %.2f%%", info.FileName, float64(info.UploadedSize)/float64(info.FileSize)*100.0)
+			//fmt.Println()
 		}, 10*time.Millisecond).
 		Post(rq.Url)
 
@@ -149,7 +156,7 @@ func UploadFiles(c *cfg.Config, args []string) error {
 		return err
 	}
 
-	return printUploadsResponse(resp)
+	return RespondExtended(resp)
 }
 
 func HandleResponse(c *cfg.Config, resp *req.Response) error {
@@ -200,24 +207,7 @@ func List(c *cfg.Config, args []string) error {
 		return err
 	}
 
-	uploads := Uploads{}
-
-	if err := json.Unmarshal([]byte(resp.String()), &uploads); err != nil {
-		return errors.New("Could not unmarshall JSON response: " + err.Error())
-	}
-
-	if !uploads.Success {
-		return errors.New(uploads.Message)
-	}
-
-	// tablewriter
-	data := [][]string{}
-	for _, entry := range uploads.Entries {
-		data = append(data, []string{
-			entry.Id, entry.Expire, entry.Context, entry.Uploaded.Format("2006-01-02 15:04:05"),
-		})
-	}
-	return WriteTable([]string{"ID", "EXPIRE", "CONTEXT", "UPLOADED"}, data)
+	return RespondTable(resp)
 }
 
 func Delete(c *cfg.Config, args []string) error {
@@ -250,25 +240,5 @@ func Describe(c *cfg.Config, args []string) error {
 		return err
 	}
 
-	return printUploadsResponse(resp)
-}
-
-func printUploadsResponse(resp *req.Response) error {
-	uploads := Uploads{}
-
-	if err := json.Unmarshal([]byte(resp.String()), &uploads); err != nil {
-		return errors.New("Could not unmarshall JSON response: " + err.Error())
-	}
-
-	if !uploads.Success {
-		return errors.New(uploads.Message)
-	}
-
-	if uploads.Message != "" {
-		fmt.Println(uploads.Message)
-	}
-
-	WriteExtended(&uploads)
-
-	return nil
+	return RespondExtended(resp)
 }
