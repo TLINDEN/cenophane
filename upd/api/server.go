@@ -39,7 +39,7 @@ func Runserver(conf *cfg.Config, args []string) error {
 	Sessionstore = session.New()
 
 	// bbolt db setup
-	db, err := NewDb(conf.DbFile)
+	db, err := NewDb(conf)
 	if err != nil {
 		return err
 	}

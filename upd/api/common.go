@@ -20,6 +20,7 @@ package api
 import (
 	"errors"
 	"fmt"
+	"github.com/gofiber/fiber/v2"
 	"github.com/tlinden/up/upd/cfg"
 	"regexp"
 	"strconv"
@@ -153,4 +154,21 @@ func Untaint(input string, wanted *regexp.Regexp) (string, error) {
 	}
 
 	return untainted, nil
+}
+
+/*
+   Retrieve the  API Context  name from the  session, assuming  is has
+   been  successfully  authenticated. However,  if  there  are no  api
+   contexts     defined,    we'll     use     'default'    (set     in
+   auth.validateAPIKey()).
+
+   If there's no apicontext in the session, assume unauth user, return ""
+*/
+func GetApicontext(c *fiber.Ctx) (string, error) {
+	sess, err := Sessionstore.Get(c)
+	if err != nil {
+		return "", fmt.Errorf("Unable to initialize session store from context: " + err.Error())
+	}
+
+	return sess.Get("apicontext").(string), nil
 }

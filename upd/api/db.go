@@ -20,6 +20,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/tlinden/up/upd/cfg"
 	//"github.com/alecthomas/repr"
 	bolt "go.etcd.io/bbolt"
 )
@@ -29,11 +30,12 @@ const Bucket string = "uploads"
 // wrapper for bolt db
 type Db struct {
 	bolt *bolt.DB
+	cfg  *cfg.Config
 }
 
-func NewDb(file string) (*Db, error) {
-	b, err := bolt.Open(file, 0600, nil)
-	db := Db{bolt: b}
+func NewDb(c *cfg.Config) (*Db, error) {
+	b, err := bolt.Open(c.DbFile, 0600, nil)
+	db := Db{bolt: b, cfg: c}
 	return &db, err
 }
 
@@ -70,38 +72,7 @@ func (db *Db) Insert(id string, entry *Upload) error {
 	return err
 }
 
-func (db *Db) Lookup(id string) (Upload, error) {
-	var upload Upload
-
-	err := db.bolt.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(Bucket))
-
-		if bucket == nil {
-			return fmt.Errorf("id %s not found", id)
-		}
-
-		j := bucket.Get([]byte(id))
-
-		if len(j) == 0 {
-			return fmt.Errorf("id %s not found", id)
-		}
-
-		if err := json.Unmarshal(j, &upload); err != nil {
-			return fmt.Errorf("unable to unmarshal json: %s", err)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		Log("DB error: %s", err.Error())
-		return upload, err
-	}
-
-	return upload, nil
-}
-
-func (db *Db) Delete(id string) error {
+func (db *Db) Delete(apicontext string, id string) error {
 	err := db.bolt.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(Bucket))
 
@@ -115,8 +86,16 @@ func (db *Db) Delete(id string) error {
 			return fmt.Errorf("id %s not found", id)
 		}
 
-		err := bucket.Delete([]byte(id))
-		return err
+		upload := &Upload{}
+		if err := json.Unmarshal(j, &upload); err != nil {
+			return fmt.Errorf("unable to unmarshal json: %s", err)
+		}
+
+		if (apicontext != "" && (db.cfg.Super == apicontext || upload.Context == apicontext)) || apicontext == "" {
+			return bucket.Delete([]byte(id))
+		}
+
+		return nil
 	})
 
 	if err != nil {
@@ -141,11 +120,13 @@ func (db *Db) List(apicontext string) (*Uploads, error) {
 				return fmt.Errorf("unable to unmarshal json: %s", err)
 			}
 
-			if apicontext != "" {
+			if apicontext != "" && db.cfg.Super != apicontext {
+				// only return the uploads for this context
 				if apicontext == upload.Context {
 					uploads.Entries = append(uploads.Entries, upload)
 				}
 			} else {
+				// return all, because there are no contexts or current==super
 				uploads.Entries = append(uploads.Entries, upload)
 			}
 
@@ -159,7 +140,7 @@ func (db *Db) List(apicontext string) (*Uploads, error) {
 }
 
 // we only return one obj here, but could return more later
-func (db *Db) Get(id string) (*Uploads, error) {
+func (db *Db) Get(apicontext string, id string) (*Uploads, error) {
 	uploads := &Uploads{}
 
 	err := db.bolt.View(func(tx *bolt.Tx) error {
@@ -178,10 +159,30 @@ func (db *Db) Get(id string) (*Uploads, error) {
 			return fmt.Errorf("unable to unmarshal json: %s", err)
 		}
 
-		uploads.Entries = append(uploads.Entries, upload)
+		if (apicontext != "" && (db.cfg.Super == apicontext || upload.Context == apicontext)) || apicontext == "" {
+			// allowed if no context (public or download)
+			// or if context matches or if context==super
+			uploads.Entries = append(uploads.Entries, upload)
+		}
 
 		return nil
 	})
 
 	return uploads, err
+}
+
+// a wrapper around Lookup() which extracts the 1st upload, if any
+func (db *Db) Lookup(apicontext string, id string) (*Upload, error) {
+	uploads, err := db.Get(apicontext, id)
+
+	if err != nil {
+		// non existent db entry with that id, or other db error, see logs
+		return &Upload{}, fmt.Errorf("No upload object found with id %s", id)
+	}
+
+	if len(uploads.Entries) == 0 {
+		return &Upload{}, fmt.Errorf("No upload object found with id %s", id)
+	}
+
+	return uploads.Entries[0], nil
 }

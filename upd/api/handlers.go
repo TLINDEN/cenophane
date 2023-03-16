@@ -58,6 +58,14 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	// init upload obj
 	entry := &Upload{Id: id, Uploaded: Timestamp{Time: time.Now()}}
 
+	// retrieve the API Context name from the session
+	apicontext, err := GetApicontext(c)
+	if err != nil {
+		return JsonStatus(c, fiber.StatusInternalServerError,
+			"Unable to initialize session store from context: "+err.Error())
+	}
+	entry.Context = apicontext
+
 	// retrieve files, if any
 	files := form.File["upload[]"]
 	members, err := SaveFormFiles(c, cfg, files, id)
@@ -93,20 +101,6 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 	entry.File = Newfilename
 
-	// retrieve the API Context name from the session, assuming is has
-	// been successfully  authenticated. However, if there  are no api
-	//    contexts   defined,    we'll   use    'default'   (set    in
-	// auth.validateAPIKey())
-	sess, err := Sessionstore.Get(c)
-	if err != nil {
-		return JsonStatus(c, fiber.StatusInternalServerError,
-			"Unable to initialize session store from context: "+err.Error())
-	}
-	apicontext := sess.Get("apicontext")
-	if apicontext != nil {
-		entry.Context = apicontext.(string)
-	}
-
 	Log("Now serving %s from %s/%s", returnUrl, cfg.StorageDir, id)
 	Log("Expire set to: %s", entry.Expire)
 	Log("Uploaded with API-Context %s", entry.Context)
@@ -132,7 +126,14 @@ func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) error {
 		return fiber.NewError(403, "Invalid id provided!")
 	}
 
-	upload, err := db.Lookup(id)
+	// retrieve the API Context name from the session
+	apicontext, err := GetApicontext(c)
+	if err != nil {
+		return JsonStatus(c, fiber.StatusInternalServerError,
+			"Unable to initialize session store from context: "+err.Error())
+	}
+
+	upload, err := db.Lookup(apicontext, id)
 	if err != nil {
 		// non existent db entry with that id, or other db error, see logs
 		return fiber.NewError(404, "No download with that id could be found!")
@@ -143,7 +144,7 @@ func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) error {
 
 	if _, err := os.Stat(filename); err != nil {
 		// db entry is there, but file isn't (anymore?)
-		go db.Delete(id)
+		go db.Delete(apicontext, id)
 		return fiber.NewError(404, "No download with that id could be found!")
 	}
 
@@ -156,7 +157,7 @@ func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) error {
 				// check if we need to delete the file now and do it in the background
 				if upload.Expire == "asap" {
 					cleanup(filepath.Join(cfg.StorageDir, id))
-					db.Delete(id)
+					db.Delete(apicontext, id)
 				}
 			}()
 		}
@@ -179,14 +180,21 @@ func DeleteUpload(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 			"No id specified!")
 	}
 
-	cleanup(filepath.Join(cfg.StorageDir, id))
+	// retrieve the API Context name from the session
+	apicontext, err := GetApicontext(c)
+	if err != nil {
+		return JsonStatus(c, fiber.StatusInternalServerError,
+			"Unable to initialize session store from context: "+err.Error())
+	}
 
-	err = db.Delete(id)
+	err = db.Delete(apicontext, id)
 	if err != nil {
 		// non existent db entry with that id, or other db error, see logs
 		return JsonStatus(c, fiber.StatusForbidden,
 			"No upload with that id could be found!")
 	}
+
+	cleanup(filepath.Join(cfg.StorageDir, id))
 
 	return nil
 }
@@ -220,7 +228,14 @@ func Describe(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 			"Invalid id provided!")
 	}
 
-	uploads, err := db.Get(id)
+	// retrieve the API Context name from the session
+	apicontext, err := GetApicontext(c)
+	if err != nil {
+		return JsonStatus(c, fiber.StatusInternalServerError,
+			"Unable to initialize session store from context: "+err.Error())
+	}
+
+	uploads, err := db.Get(apicontext, id)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"No upload with that id could be found!")

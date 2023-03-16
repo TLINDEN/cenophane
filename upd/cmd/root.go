@@ -61,6 +61,7 @@ func Execute() error {
 	f.StringVarP(&conf.ApiPrefix, "apiprefix", "a", "/api", "API endpoint path")
 	f.StringVarP(&conf.Url, "url", "u", "", "HTTP endpoint w/o path")
 	f.StringVarP(&conf.DbFile, "dbfile", "D", "/tmp/uploads.db", "Bold database file to use")
+	f.StringVarP(&conf.Super, "super", "", "", "The API Context which has permissions on all contexts")
 
 	// server settings
 	f.BoolVarP(&conf.V4only, "ipv4", "4", false, "Only listen on ipv4")
