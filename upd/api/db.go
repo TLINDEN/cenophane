@@ -105,7 +105,7 @@ func (db *Db) Delete(apicontext string, id string) error {
 	return err
 }
 
-func (db *Db) List(apicontext string) (*Uploads, error) {
+func (db *Db) List(apicontext string, filter string) (*Uploads, error) {
 	uploads := &Uploads{}
 
 	err := db.bolt.View(func(tx *bolt.Tx) error {
@@ -120,14 +120,20 @@ func (db *Db) List(apicontext string) (*Uploads, error) {
 				return fmt.Errorf("unable to unmarshal json: %s", err)
 			}
 
+			fmt.Printf("apicontext: %s, filter: %s\n", apicontext, filter)
 			if apicontext != "" && db.cfg.Super != apicontext {
 				// only return the uploads for this context
 				if apicontext == upload.Context {
-					uploads.Entries = append(uploads.Entries, upload)
+					// unless a filter needed OR no filter specified
+					if (filter != "" && upload.Context == filter) || filter == "" {
+						uploads.Entries = append(uploads.Entries, upload)
+					}
 				}
 			} else {
-				// return all, because there are no contexts or current==super
-				uploads.Entries = append(uploads.Entries, upload)
+				// return all, because we operate a public service or current==super
+				if (filter != "" && upload.Context == filter) || filter == "" {
+					uploads.Entries = append(uploads.Entries, upload)
+				}
 			}
 
 			return nil

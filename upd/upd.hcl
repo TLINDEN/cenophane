@@ -4,7 +4,7 @@ bodylimit = 10000
 
 apicontext = [
   {
-    context = "default"
+    context = "root"
     key = "0fddbff5d8010f81cd28a7d77f3e38981b13d6164c2fd6e1c3f60a4287630c37",
   },
   {
@@ -14,3 +14,6 @@ apicontext = [
 ]
 
 url = "https://sokrates.daemon.de"
+
+# this is the root context with all permissions
+super = "root"

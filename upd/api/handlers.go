@@ -28,6 +28,10 @@ import (
 	"time"
 )
 
+type SetContext struct {
+	Apicontext string `json:"apicontext" form:"apicontext"`
+}
+
 func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	// supports upload of multiple files with:
 	//
@@ -201,13 +205,28 @@ func DeleteUpload(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 
 // returns the whole list + error code, no post processing by server
 func List(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
-	apicontext, err := Untaint(c.Params("apicontext"), cfg.RegKey)
-	if err != nil {
+	// fetch filter from body(json expected)
+	setcontext := new(SetContext)
+	if err := c.BodyParser(setcontext); err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
-			"Invalid api context provided!")
+			"Unable to parse body: "+err.Error())
 	}
 
-	uploads, err := db.List(apicontext)
+	filter, err := Untaint(setcontext.Apicontext, cfg.RegKey)
+	if err != nil {
+		return JsonStatus(c, fiber.StatusForbidden,
+			"Invalid api context filter provided!")
+	}
+
+	// retrieve the API Context name from the session
+	apicontext, err := GetApicontext(c)
+	if err != nil {
+		return JsonStatus(c, fiber.StatusInternalServerError,
+			"Unable to initialize session store from context: "+err.Error())
+	}
+
+	// get list
+	uploads, err := db.List(apicontext, filter)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"Unable to list uploads: "+err.Error())
