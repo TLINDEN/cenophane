@@ -21,7 +21,7 @@ import (
 	"archive/zip"
 	"errors"
 	"github.com/gofiber/fiber/v2"
-	"github.com/tlinden/up/upd/cfg"
+	"github.com/tlinden/cenophane/cfg"
 	"io"
 	"mime/multipart"
 	"os"

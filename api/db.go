@@ -20,7 +20,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/tlinden/up/upd/cfg"
+	"github.com/tlinden/cenophane/cfg"
 	//"github.com/alecthomas/repr"
 	bolt "go.etcd.io/bbolt"
 )

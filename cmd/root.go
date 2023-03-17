@@ -29,8 +29,8 @@ import (
 	flag "github.com/spf13/pflag"
 
 	"github.com/alecthomas/repr"
-	"github.com/tlinden/up/upd/api"
-	"github.com/tlinden/up/upd/cfg"
+	"github.com/tlinden/cenophane/api"
+	"github.com/tlinden/cenophane/cfg"
 
 	"os"
 	"path/filepath"
@@ -68,7 +68,7 @@ func Execute() error {
 	f.BoolVarP(&conf.V6only, "ipv6", "6", false, "Only listen on ipv6")
 
 	f.BoolVarP(&conf.Prefork, "prefork", "p", false, "Prefork server threads")
-	f.StringVarP(&conf.AppName, "appname", "n", "upd "+conf.GetVersion(), "App name to say hi as")
+	f.StringVarP(&conf.AppName, "appname", "n", "cenod "+conf.GetVersion(), "App name to say hi as")
 	f.IntVarP(&conf.BodyLimit, "bodylimit", "b", 10250000000, "Max allowed upload size in bytes")
 	f.StringSliceP("apikeys", "", []string{}, "Api key[s] to allow access")
 
@@ -89,10 +89,10 @@ func Execute() error {
 		configfiles = []string{configfile}
 	} else {
 		configfiles = []string{
-			"/etc/upd.hcl", "/usr/local/etc/upd.hcl", // unix variants
-			filepath.Join(os.Getenv("HOME"), ".config", "upd", "upd.hcl"),
-			filepath.Join(os.Getenv("HOME"), ".upd"),
-			"upd.hcl",
+			"/etc/cenod.hcl", "/usr/local/etc/cenod.hcl", // unix variants
+			filepath.Join(os.Getenv("HOME"), ".config", "cenod", "cenod.hcl"),
+			filepath.Join(os.Getenv("HOME"), ".cenod"),
+			"cenod.hcl",
 		}
 	}
 
@@ -106,9 +106,9 @@ func Execute() error {
 	}
 
 	// env overrides config file
-	k.Load(env.Provider("UPD_", ".", func(s string) string {
+	k.Load(env.Provider("CENOD_", ".", func(s string) string {
 		return strings.Replace(strings.ToLower(
-			strings.TrimPrefix(s, "UPD_")), "_", ".", -1)
+			strings.TrimPrefix(s, "CENOD_")), "_", ".", -1)
 	}), nil)
 
 	// command line overrides env

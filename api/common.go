@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
-	"github.com/tlinden/up/upd/cfg"
+	"github.com/tlinden/cenophane/cfg"
 	"regexp"
 	"strconv"
 	"time"

@@ -17,7 +17,6 @@
 
 #
 # no need to modify anything below
-tool      = upd
 version   = $(shell egrep "= .v" cfg/config.go | cut -d'=' -f2 | cut -d'"' -f 2)
 archs     = android darwin freebsd linux netbsd openbsd windows
 PREFIX    = /usr/local
@@ -28,6 +27,7 @@ COMMIT    = $(shell git rev-parse --short=8 HEAD)
 BUILD     = $(shell date +%Y.%m.%d.%H%M%S) 
 VERSION  := $(if $(filter $(BRANCH), development),$(version)-$(BRANCH)-$(COMMIT)-$(BUILD),$(version))
 HAVE_POD := $(shell pod2text -h 2>/dev/null)
+DAEMON   := cenod
 
 all: buildlocal buildlocalctl
 
@@ -35,24 +35,24 @@ buildlocalctl:
 	make -C upctl
 
 buildlocal:
-	go build -ldflags "-X 'github.com/tlinden/up/upd/cfg.VERSION=$(VERSION)'"
+	go build -ldflags "-X 'github.com/tlinden/cenophane/cfg.VERSION=$(VERSION)'" -o $(DAEMON)
 
 buildimage: clean
 	docker-compose --verbose build
 
 release:
-	./mkrel.sh $(tool) $(version)
+	./mkrel.sh $(DAEMON) $(version)
 	gh release create $(version) --generate-notes releases/*
 
 install: buildlocal
 	install -d -o $(UID) -g $(GID) $(PREFIX)/bin
-	install -o $(UID) -g $(GID) -m 555 $(tool) $(PREFIX)/sbin/
+	install -o $(UID) -g $(GID) -m 555 $(DAEMON) $(PREFIX)/sbin/
 
 cleanctl:
 	make -C upctl clean
 
 clean: cleanctl
-	rm -rf $(tool) releases coverage.out
+	rm -rf releases coverage.out $(DAEMON)
 
 test:
 	go test -v ./...
@@ -60,15 +60,15 @@ test:
 
 singletest:
 	@echo "Call like this: ''make singletest TEST=TestX1 MOD=lib"
-	go test -run $(TEST) github.com/tlinden/upd/$(MOD)
+	go test -run $(TEST) github.com/tlinden/cenophane/$(MOD)
 
 cover-report:
 	go test ./... -cover -coverprofile=coverage.out
 	go tool cover -html=coverage.out
 
 show-versions: buildlocal
-	@echo "### upd version:"
-	@./upd --version
+	@echo "### cenod version:"
+	@./cenod --version
 
 	@echo
 	@echo "### go module versions:"

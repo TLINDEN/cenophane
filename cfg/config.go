@@ -69,7 +69,7 @@ func Getversion() string {
 	//  main  branch,   and  cfg.Version-$branch-$lastcommit-$date  on
 	// development branch
 
-	return fmt.Sprintf("This is upd version %s", VERSION)
+	return fmt.Sprintf("This is cenophane server version %s", VERSION)
 }
 
 func (c *Config) GetVersion() string {

@@ -21,7 +21,7 @@ import (
 	//"github.com/alecthomas/repr"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	"github.com/tlinden/up/upd/cfg"
+	"github.com/tlinden/cenophane/cfg"
 
 	"os"
 	"path/filepath"

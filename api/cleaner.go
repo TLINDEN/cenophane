@@ -21,7 +21,7 @@ import (
 	"fmt"
 	//"github.com/alecthomas/repr"
 	"encoding/json"
-	"github.com/tlinden/up/upd/cfg"
+	"github.com/tlinden/cenophane/cfg"
 	bolt "go.etcd.io/bbolt"
 	"path/filepath"
 	"time"
