@@ -29,7 +29,10 @@ BUILD     = $(shell date +%Y.%m.%d.%H%M%S)
 VERSION  := $(if $(filter $(BRANCH), development),$(version)-$(BRANCH)-$(COMMIT)-$(BUILD),$(version))
 HAVE_POD := $(shell pod2text -h 2>/dev/null)
 
-all: buildlocal
+all: buildlocal buildlocalctl
+
+buildlocalctl:
+	make -C upctl
 
 buildlocal:
 	go build -ldflags "-X 'github.com/tlinden/up/upd/cfg.VERSION=$(VERSION)'"
@@ -45,7 +48,10 @@ install: buildlocal
 	install -d -o $(UID) -g $(GID) $(PREFIX)/bin
 	install -o $(UID) -g $(GID) -m 555 $(tool) $(PREFIX)/sbin/
 
-clean:
+cleanctl:
+	make -C upctl clean
+
+clean: cleanctl
 	rm -rf $(tool) releases coverage.out
 
 test:
