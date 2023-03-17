@@ -13,7 +13,7 @@ apicontext = [
   }
 ]
 
-url = "https://sokrates.daemon.de"
+#url = "https://sokrates.daemon.de"
 
 # this is the root context with all permissions
 super = "root"

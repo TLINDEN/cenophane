@@ -49,6 +49,7 @@ type Upload struct {
 	Members  []string  `json:"members"` // contains multiple files, so File is an archive
 	Uploaded Timestamp `json:"uploaded"`
 	Context  string    `json:"context"`
+	Url      string    `json:"url"`
 }
 
 // this one is also used for marshalling to the client
@@ -170,5 +171,10 @@ func GetApicontext(c *fiber.Ctx) (string, error) {
 		return "", fmt.Errorf("Unable to initialize session store from context: " + err.Error())
 	}
 
-	return sess.Get("apicontext").(string), nil
+	apicontext := sess.Get("apicontext")
+	if apicontext != nil {
+		return apicontext.(string), nil
+	}
+
+	return "", nil
 }

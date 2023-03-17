@@ -21,11 +21,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	//"github.com/alecthomas/repr"
 	"github.com/imroc/req/v3"
 	"github.com/schollz/progressbar/v3"
 	"github.com/tlinden/up/upctl/cfg"
+	"mime"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 )
 
@@ -51,6 +54,7 @@ type Upload struct {
 	Members  []string  `json:"members"` // contains multiple files, so File is an archive
 	Uploaded Timestamp `json:"uploaded"`
 	Context  string    `json:"context"`
+	Url      string    `json:"url"`
 }
 
 type Uploads struct {
@@ -147,8 +151,6 @@ func UploadFiles(c *cfg.Config, args []string) error {
 		SetUploadCallbackWithInterval(func(info req.UploadInfo) {
 			left = float64(info.UploadedSize) / float64(info.FileSize) * 100.0
 			bar.Add(int(left))
-			//fmt.Printf("\r%q uploaded %.2f%%", info.FileName, float64(info.UploadedSize)/float64(info.FileSize)*100.0)
-			//fmt.Println()
 		}, 10*time.Millisecond).
 		Post(rq.Url)
 
@@ -241,4 +243,73 @@ func Describe(c *cfg.Config, args []string) error {
 	}
 
 	return RespondExtended(resp)
+}
+
+func Download(c *cfg.Config, args []string) error {
+	id := args[0]
+
+	// progres bar
+	bar := progressbar.Default(100)
+
+	callback := func(info req.DownloadInfo) {
+		if info.Response.Response != nil {
+			bar.Add(1)
+		}
+	}
+
+	rq := Setup(c, "/file/"+id+"/")
+	resp, err := rq.R.
+		SetOutputFile(id).
+		SetDownloadCallback(callback).
+		Get(rq.Url)
+
+	if err != nil {
+		return err
+	}
+
+	_, params, err := mime.ParseMediaType(resp.Header.Get("Content-Disposition"))
+	if err != nil {
+		os.Remove(id)
+		return err
+	}
+
+	filename := params["filename"]
+	if filename == "" {
+		os.Remove(id)
+		return fmt.Errorf("No filename provided!")
+	}
+
+	cleanfilename, _ := Untaint(filename, regexp.MustCompile(`[^a-zA-Z0-9\-\._]`))
+
+	if err := os.Rename(id, cleanfilename); err != nil {
+		os.Remove(id)
+		return fmt.Errorf("\nUnable to rename file: " + err.Error())
+	}
+
+	fmt.Printf("%s successfully downloaded to file %s.", id, cleanfilename)
+
+	return nil
+}
+
+/*
+   Untaint user input, that is: remove all non supported chars.
+
+   wanted is a  regexp matching chars we shall  leave. Everything else
+   will be removed. Eg:
+
+   untainted := Untaint(input, `[^a-zA-Z0-9\-]`)
+
+   Returns a  new string  and an  error if the  input string  has been
+   modified.  It's the  callers  choice  to decide  what  to do  about
+   it. You may  ignore the error and use the  untainted string or bail
+   out.
+*/
+func Untaint(input string, wanted *regexp.Regexp) (string, error) {
+	untainted := wanted.ReplaceAllString(input, "")
+
+	if len(untainted) != len(input) {
+		return untainted, errors.New("Invalid input string!")
+	}
+
+	return untainted, nil
 }

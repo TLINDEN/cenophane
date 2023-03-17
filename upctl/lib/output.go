@@ -73,6 +73,7 @@ func WriteExtended(uploads *Uploads) {
 		fmt.Printf(format, "Context", entry.Context)
 		fmt.Printf(format, "Uploaded", entry.Uploaded)
 		fmt.Printf(format, "Filename", entry.File)
+		fmt.Printf(format, "Url", entry.Url)
 		fmt.Println()
 	}
 }

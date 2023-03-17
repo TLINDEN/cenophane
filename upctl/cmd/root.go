@@ -90,6 +90,7 @@ func Execute() {
 	rootCmd.AddCommand(ListCommand(&conf))
 	rootCmd.AddCommand(DeleteCommand(&conf))
 	rootCmd.AddCommand(DescribeCommand(&conf))
+	rootCmd.AddCommand(DownloadCommand(&conf))
 
 	err := rootCmd.Execute()
 	if err != nil {

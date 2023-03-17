@@ -54,28 +54,31 @@ func Runserver(conf *cfg.Config, args []string) error {
 	// authenticated routes
 	api := router.Group(conf.ApiPrefix + ApiVersion)
 	{
-		// authenticated routes
+		// upload
 		api.Post("/file/", auth, func(c *fiber.Ctx) error {
 			return FilePut(c, conf, db)
 		})
 
+		// download w/o expire
 		api.Get("/file/:id/:file", auth, func(c *fiber.Ctx) error {
 			return FileGet(c, conf, db)
 		})
-
 		api.Get("/file/:id/", auth, func(c *fiber.Ctx) error {
 			return FileGet(c, conf, db)
 		})
 
+		// remove
 		api.Delete("/file/:id/", auth, func(c *fiber.Ctx) error {
 			err := DeleteUpload(c, conf, db)
 			return SendResponse(c, "", err)
 		})
 
+		// listing
 		api.Get("/list/", auth, func(c *fiber.Ctx) error {
 			return List(c, conf, db)
 		})
 
+		// info
 		api.Get("/upload/:id/", auth, func(c *fiber.Ctx) error {
 			return Describe(c, conf, db)
 		})

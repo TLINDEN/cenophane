@@ -25,6 +25,7 @@ import (
 
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -258,6 +259,10 @@ func Describe(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"No upload with that id could be found!")
+	}
+
+	for _, upload := range uploads.Entries {
+		upload.Url = strings.Join([]string{cfg.Url, "download", id, upload.File}, "/")
 	}
 
 	// if we reached this point we can signal success
