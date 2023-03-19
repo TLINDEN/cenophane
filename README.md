@@ -1,5 +1,39 @@
 # Cenophane
-Simple standalone file upload server with expiration
+Simple standalone file upload server with expiration and commandline client.
+
+## Introduction
+
+**Cenophane** is a simple standalone  file server where every uploaded
+file expires  sooner or later. The  server provides a RESTful  API and
+can be used easily with the commandline client `upctl`.
+
+The idea is to provide a way to quickly exchange files between parties
+when  no other  way  is available  and the  files  themselfes are  not
+important enough to  keep them around. Think of  this szenario: you're
+working for  the network departement  and there's a problem  with your
+routing. Tech support  asks you to create a network  trace and send it
+to  them. But  you  can't because  the  trace file  is  too large  and
+sensitive to  be sent by email.  This is where **Cenophane**  comes to
+the rescue.
+
+You upload the  file, send the download  url to the other  party and -
+assuming you've utilized  the defaults - when they download  it, it is
+being deleted  immediately from the  server. But  you can also  set an
+expire time, say 5 days or something like that.
+
+The  download urls  generated  by **Cenophane**  consist  of a  unique
+onetime  hash, so  they  are somewhat  confident.  However, if  you're
+uploading really sensitive data, you better encrypt it.
+
+**Cenophane** also  supports something we  call an API  Context. There
+can be many such API contexts.  Each of these has an associated token,
+which  has  to be  used  by  legitimate  clients to  authenticate  and
+authorize. A user  can only manage uploads within  that context. Think
+"tenant" if you will.
+
+## Demo
+
+![demo upctl session](demo/upctl.gif)
 
 ## Features
 
@@ -16,6 +50,19 @@ Simple standalone file upload server with expiration
 - docker container build available
 - the server supports config by config file, environment variables or flags
 - restrictive defaults
+
+## Installation
+
+Since the software  is currently being developed, there  are no binary
+releases  available yet. You'll  need  a go  build  environment. Just  run
+`make` to build everything.
+
+There's a `Dockerfile` available for the server so you can build and run it using docker:
+```
+make buildimage
+docker-compose run cenophane
+```
+Then use the client to test it.
 
 ## Server Usage
 
@@ -79,6 +126,21 @@ apicontext = [
 super = "root"
 ```
 
+### Server endpoint
+
+The   server   serves   the   API  under   the   following   endpoint:
+``http://SERVERNAME[:PORT]/api/v1`  where   SERVERNAME[:PORT]  is  the
+argument  to  the  `-l`  commandline argument  or  the  config  option
+`listen` or the environment variable `CENOD_LISTEN`.
+
+By default  the server listens  on any interface  ip4 and ipv6  on TCP
+port  8080. You  can  specify a  server  name or  an  ipaddress and  a
+port. The server can be configured to run on ipv6 (or ipv4) only using
+the `-4` respective the `-6` commandline flags.
+
+It does not  support TLS at the  moment. Use a nginx  reverse proxy in
+front of it.
+
 ## Client Usage
 
 ```
@@ -119,6 +181,8 @@ endpoint = "http://localhost:8080/api/v1"
 apikey = "970b391f22f515d96b3e9b86a2c62c627968828e47b356994d2e583188b4190a"
 ```
 
+The `endpoint` is  the **Cenophane** server running  somewhere and the
+`apikey` is the token you got from the server operator..
 
 
 ## TODO

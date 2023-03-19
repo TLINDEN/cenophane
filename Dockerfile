@@ -10,8 +10,8 @@ RUN git --version
 WORKDIR /work
 
 COPY go.mod .
-RUN go mod download
 COPY . .
+RUN go mod download
 RUN make && strip cenod
 
 FROM alpine:3.17
