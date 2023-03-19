@@ -129,7 +129,7 @@ super = "root"
 ### Server endpoint
 
 The   server   serves   the   API  under   the   following   endpoint:
-``http://SERVERNAME[:PORT]/api/v1`  where   SERVERNAME[:PORT]  is  the
+`http://SERVERNAME[:PORT]/api/v1`  where   SERVERNAME[:PORT]  is  the
 argument  to  the  `-l`  commandline argument  or  the  config  option
 `listen` or the environment variable `CENOD_LISTEN`.
 
