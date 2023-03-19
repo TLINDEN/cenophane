@@ -15,9 +15,7 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-package lib
-
-// FIXME: import from upd!!!!
+package common
 
 import (
 	"regexp"
@@ -75,7 +73,7 @@ func (t *Timestamp) parseUnix(data []byte) error {
    Convert a  duration into  seconds (int).
    Valid  time units  are "s", "m", "h" and "d".
 */
-func duration2int(duration string) int {
+func Duration2int(duration string) int {
 	re := regexp.MustCompile(`(\d+)([dhms])`)
 	seconds := 0
 

@@ -22,6 +22,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/tlinden/cenophane/cfg"
+	"github.com/tlinden/cenophane/common"
 
 	"os"
 	"path/filepath"
@@ -61,7 +62,7 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// init upload obj
-	entry := &Upload{Id: id, Uploaded: Timestamp{Time: time.Now()}}
+	entry := &common.Upload{Id: id, Uploaded: common.Timestamp{Time: time.Now()}}
 
 	// retrieve the API Context name from the session
 	apicontext, err := GetApicontext(c)
@@ -90,7 +91,7 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	if len(formdata.Expire) == 0 {
 		entry.Expire = "asap"
 	} else {
-		ex, err := Untaint(formdata.Expire, cfg.RegDuration) // duration or asap allowed
+		ex, err := common.Untaint(formdata.Expire, cfg.RegDuration) // duration or asap allowed
 		if err != nil {
 			return JsonStatus(c, fiber.StatusForbidden,
 				"Invalid data: "+err.Error())
@@ -114,7 +115,7 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	go db.Insert(id, entry)
 
 	// everything went well so far
-	res := &Uploads{Entries: []*Upload{entry}}
+	res := &common.Uploads{Entries: []*common.Upload{entry}}
 	res.Success = true
 	res.Message = "Download url: " + returnUrl
 	res.Code = fiber.StatusOK
@@ -126,7 +127,7 @@ func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) error {
 
 	// we ignore c.Params("file"), cause  it may be malign. Also we've
 	// got it in the db anyway
-	id, err := Untaint(c.Params("id"), cfg.RegKey)
+	id, err := common.Untaint(c.Params("id"), cfg.RegKey)
 	if err != nil {
 		return fiber.NewError(403, "Invalid id provided!")
 	}
@@ -174,7 +175,7 @@ func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) error {
 // delete file, id dir and db entry
 func DeleteUpload(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 
-	id, err := Untaint(c.Params("id"), cfg.RegKey)
+	id, err := common.Untaint(c.Params("id"), cfg.RegKey)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"Invalid id provided!")
@@ -213,7 +214,7 @@ func List(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 			"Unable to parse body: "+err.Error())
 	}
 
-	filter, err := Untaint(setcontext.Apicontext, cfg.RegKey)
+	filter, err := common.Untaint(setcontext.Apicontext, cfg.RegKey)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"Invalid api context filter provided!")
@@ -242,7 +243,7 @@ func List(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 
 // returns just one upload obj + error code, no post processing by server
 func Describe(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
-	id, err := Untaint(c.Params("id"), cfg.RegKey)
+	id, err := common.Untaint(c.Params("id"), cfg.RegKey)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"Invalid id provided!")

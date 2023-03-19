@@ -22,6 +22,7 @@ import (
 	//"github.com/alecthomas/repr"
 	"encoding/json"
 	"github.com/tlinden/cenophane/cfg"
+	"github.com/tlinden/cenophane/common"
 	bolt "go.etcd.io/bbolt"
 	"path/filepath"
 	"time"
@@ -36,7 +37,7 @@ func DeleteExpiredUploads(conf *cfg.Config, db *Db) error {
 		}
 
 		err := bucket.ForEach(func(id, j []byte) error {
-			upload := &Upload{}
+			upload := &common.Upload{}
 			if err := json.Unmarshal(j, &upload); err != nil {
 				return fmt.Errorf("unable to unmarshal json: %s", err)
 			}

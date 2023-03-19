@@ -32,6 +32,7 @@ import (
 	"github.com/tlinden/cenophane/api"
 	"github.com/tlinden/cenophane/cfg"
 
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -62,6 +63,8 @@ func Execute() error {
 	f.StringVarP(&conf.Url, "url", "u", "", "HTTP endpoint w/o path")
 	f.StringVarP(&conf.DbFile, "dbfile", "D", "/tmp/uploads.db", "Bold database file to use")
 	f.StringVarP(&conf.Super, "super", "", "", "The API Context which has permissions on all contexts")
+	f.StringVarP(&conf.Frontpage, "frontpage", "", "welcome to upload api, use /api enpoint!",
+		"Content or filename to be displayed on / in case someone visits")
 
 	// server settings
 	f.BoolVarP(&conf.V4only, "ipv4", "4", false, "Only listen on ipv4")
@@ -70,7 +73,6 @@ func Execute() error {
 	f.BoolVarP(&conf.Prefork, "prefork", "p", false, "Prefork server threads")
 	f.StringVarP(&conf.AppName, "appname", "n", "cenod "+conf.GetVersion(), "App name to say hi as")
 	f.IntVarP(&conf.BodyLimit, "bodylimit", "b", 10250000000, "Max allowed upload size in bytes")
-	f.StringSliceP("apikeys", "", []string{}, "Api key[s] to allow access")
 
 	f.Parse(os.Args[1:])
 
@@ -119,8 +121,25 @@ func Execute() error {
 	// fetch values
 	k.Unmarshal("", &conf)
 
+	// there may exist some api context variables
+	GetApicontextsFromEnv(&conf)
+
 	if conf.Debug {
 		repr.Print(conf)
+	}
+
+	// Frontpage?
+	if conf.Frontpage != "" {
+		if _, err := os.Stat(conf.Frontpage); err == nil {
+			// it's a filename, try to use it
+			content, err := ioutil.ReadFile(conf.Frontpage)
+			if err != nil {
+				return errors.New("error loading config: " + err.Error())
+			}
+
+			// replace the filename
+			conf.Frontpage = string(content)
+		}
 	}
 
 	switch {
@@ -131,4 +150,38 @@ func Execute() error {
 		conf.ApplyDefaults()
 		return api.Runserver(&conf, flag.Args())
 	}
+}
+
+/*
+   Get a list of Api Contexts from ENV. Useful for use with k8s secrets.
+
+   Multiple env vars are supported in this format:
+
+   CENOD_CONTEXT_$(NAME)="<context>:<key>"
+
+eg:
+
+   CENOD_CONTEXT_SUPPORT="support:tymag-fycyh-gymof-dysuf-doseb-puxyx"
+                 ^^^^^^^- doesn't matter.
+
+   Modifies cfg.Config directly
+*/
+func GetApicontextsFromEnv(conf *cfg.Config) {
+	contexts := []cfg.Apicontext{}
+
+	for _, envvar := range os.Environ() {
+		pair := strings.SplitN(envvar, "=", 2)
+		if strings.HasPrefix(pair[0], "CENOD_CONTEXT_") {
+			c := strings.SplitN(pair[1], ":", 2)
+			if len(c) == 2 {
+				contexts = append(contexts, cfg.Apicontext{Context: c[0], Key: c[1]})
+			}
+		}
+	}
+
+	for _, ap := range conf.Apicontexts {
+		contexts = append(contexts, ap)
+	}
+
+	conf.Apicontexts = contexts
 }

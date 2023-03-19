@@ -23,17 +23,18 @@ import (
 	"fmt"
 	"github.com/imroc/req/v3"
 	"github.com/olekukonko/tablewriter"
+	"github.com/tlinden/cenophane/common"
 	"os"
 	"time"
 )
 
 // make a human readable version of the expire setting
-func prepareExpire(expire string, start Timestamp) string {
+func prepareExpire(expire string, start common.Timestamp) string {
 	switch expire {
 	case "asap":
 		return "On first access"
 	default:
-		return time.Unix(start.Unix()+int64(duration2int(expire)), 0).Format("2006-01-02 15:04:05")
+		return time.Unix(start.Unix()+int64(common.Duration2int(expire)), 0).Format("2006-01-02 15:04:05")
 	}
 
 	return ""
@@ -62,7 +63,7 @@ func WriteTable(headers []string, data [][]string) {
 }
 
 // output like psql \x
-func WriteExtended(uploads *Uploads) {
+func WriteExtended(uploads *common.Uploads) {
 	format := fmt.Sprintf("%%%ds: %%s\n", Maxwidth)
 
 	// we shall only have 1 element, however, if we ever support more, here we go
@@ -78,9 +79,9 @@ func WriteExtended(uploads *Uploads) {
 	}
 }
 
-// extract an Uploads{} struct from json response
-func GetUploadsFromResponse(resp *req.Response) (*Uploads, error) {
-	uploads := Uploads{}
+// extract an common.Uploads{} struct from json response
+func GetUploadsFromResponse(resp *req.Response) (*common.Uploads, error) {
+	uploads := common.Uploads{}
 
 	if err := json.Unmarshal([]byte(resp.String()), &uploads); err != nil {
 		return nil, errors.New("Could not unmarshall JSON response: " + err.Error())

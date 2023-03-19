@@ -24,6 +24,7 @@ import (
 	//"github.com/alecthomas/repr"
 	"github.com/imroc/req/v3"
 	"github.com/schollz/progressbar/v3"
+	"github.com/tlinden/cenophane/common"
 	"github.com/tlinden/up/upctl/cfg"
 	"mime"
 	"os"
@@ -45,23 +46,6 @@ type Request struct {
 
 type ListParams struct {
 	Apicontext string `json:"apicontext"`
-}
-
-type Upload struct {
-	Id       string    `json:"id"`
-	Expire   string    `json:"expire"`
-	File     string    `json:"file"`    // final filename (visible to the downloader)
-	Members  []string  `json:"members"` // contains multiple files, so File is an archive
-	Uploaded Timestamp `json:"uploaded"`
-	Context  string    `json:"context"`
-	Url      string    `json:"url"`
-}
-
-type Uploads struct {
-	Entries []*Upload `json:"uploads"`
-	Success bool      `json:"success"`
-	Message string    `json:"message"`
-	Code    int       `json:"code"`
 }
 
 const Maxwidth = 10
@@ -279,7 +263,7 @@ func Download(c *cfg.Config, args []string) error {
 		return fmt.Errorf("No filename provided!")
 	}
 
-	cleanfilename, _ := Untaint(filename, regexp.MustCompile(`[^a-zA-Z0-9\-\._]`))
+	cleanfilename, _ := common.Untaint(filename, regexp.MustCompile(`[^a-zA-Z0-9\-\._]`))
 
 	if err := os.Rename(id, cleanfilename); err != nil {
 		os.Remove(id)
@@ -289,27 +273,4 @@ func Download(c *cfg.Config, args []string) error {
 	fmt.Printf("%s successfully downloaded to file %s.", id, cleanfilename)
 
 	return nil
-}
-
-/*
-   Untaint user input, that is: remove all non supported chars.
-
-   wanted is a  regexp matching chars we shall  leave. Everything else
-   will be removed. Eg:
-
-   untainted := Untaint(input, `[^a-zA-Z0-9\-]`)
-
-   Returns a  new string  and an  error if the  input string  has been
-   modified.  It's the  callers  choice  to decide  what  to do  about
-   it. You may  ignore the error and use the  untainted string or bail
-   out.
-*/
-func Untaint(input string, wanted *regexp.Regexp) (string, error) {
-	untainted := wanted.ReplaceAllString(input, "")
-
-	if len(untainted) != len(input) {
-		return untainted, errors.New("Invalid input string!")
-	}
-
-	return untainted, nil
 }

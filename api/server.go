@@ -27,6 +27,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/gofiber/keyauth/v2"
 	"github.com/tlinden/cenophane/cfg"
+	"github.com/tlinden/cenophane/common"
 )
 
 // sessions are context specific and can be global savely
@@ -87,7 +88,7 @@ func Runserver(conf *cfg.Config, args []string) error {
 	// public routes
 	{
 		router.Get("/", func(c *fiber.Ctx) error {
-			return c.Send([]byte("welcome to upload api, use /api enpoint!"))
+			return c.Send([]byte(conf.Frontpage))
 		})
 
 		router.Get("/download/:id/:file", func(c *fiber.Ctx) error {
@@ -113,7 +114,7 @@ func Runserver(conf *cfg.Config, args []string) error {
 
 func SetupAuthStore(conf *cfg.Config) func(*fiber.Ctx) error {
 	AuthSetEndpoints(conf.ApiPrefix, ApiVersion, []string{"/file"})
-	AuthSetApikeys(conf.Apicontext)
+	AuthSetApikeys(conf.Apicontexts)
 
 	return keyauth.New(keyauth.Config{
 		Validator:    AuthValidateAPIKey,
@@ -162,7 +163,7 @@ func JsonStatus(c *fiber.Ctx, code int, msg string) error {
 		success = false
 	}
 
-	return c.Status(code).JSON(Result{
+	return c.Status(code).JSON(common.Result{
 		Code:    code,
 		Message: msg,
 		Success: success,
@@ -181,14 +182,14 @@ func SendResponse(c *fiber.Ctx, msg string, err error) error {
 			code = e.Code
 		}
 
-		return c.Status(code).JSON(Result{
+		return c.Status(code).JSON(common.Result{
 			Code:    code,
 			Message: err.Error(),
 			Success: false,
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(Result{
+	return c.Status(fiber.StatusOK).JSON(common.Result{
 		Code:    fiber.StatusOK,
 		Message: msg,
 		Success: true,

@@ -40,7 +40,8 @@ type Config struct {
 	StorageDir string `koanf:"storagedir"` // db and uploads go there
 	Url        string `koanf:"url"`        // public visible url, might be different from Listen
 	DbFile     string `koanf:"dbfile"`
-	Super      string `koanf:"super"` // the apicontext which has all permissions
+	Super      string `koanf:"super"`     // the apicontext which has all permissions
+	Frontpage  string `koanf:"frontpage"` // a html file
 
 	// fiber settings, see:
 	// https://docs.gofiber.io/api/fiber/#config
@@ -52,7 +53,7 @@ type Config struct {
 	Network   string
 
 	// only settable via config
-	Apicontext []Apicontext `koanf:"apicontext"`
+	Apicontexts []Apicontext `koanf:"apicontext"`
 
 	// Internals only
 	RegNormalizedFilename *regexp.Regexp
