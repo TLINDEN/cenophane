@@ -33,7 +33,7 @@ all: buildlocal
 
 
 buildlocal:
-	go build -ldflags "-X 'github.com/tlinden/up/upctl/cfg.VERSION=$(VERSION)'"
+	go build -ldflags "-X 'github.com/tlinden/cenophane/upctl/cfg.VERSION=$(VERSION)'"
 
 release:
 	./mkrel.sh $(tool) $(version)
@@ -48,7 +48,6 @@ clean:
 
 test:
 	go test -v ./...
-	bash t/test.sh
 
 singletest:
 	@echo "Call like this: ''make singletest TEST=TestX1 MOD=lib"

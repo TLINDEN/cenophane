@@ -193,6 +193,7 @@ The `endpoint` is  the **Cenophane** server running  somewhere and the
 - upd: https://docs.gofiber.io/guide/error-handling/ to always use json output
 - upctl: get rid of HandleResponse(), used only once anyway
 - add form so that public users can upload
+- use Writer for output.go so we can unit test the stuff in there
 
 
 

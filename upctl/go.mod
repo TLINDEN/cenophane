@@ -1,9 +1,10 @@
-module github.com/tlinden/up/upctl
+module github.com/tlinden/cenophane/upctl
 
 go 1.18
 
 require (
 	github.com/imroc/req/v3 v3.32.0
+	github.com/jarcoal/httpmock v1.3.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/schollz/progressbar/v3 v3.13.1
 	github.com/spf13/cobra v1.6.1

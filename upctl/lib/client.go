@@ -23,9 +23,10 @@ import (
 	"fmt"
 	//"github.com/alecthomas/repr"
 	"github.com/imroc/req/v3"
+	"github.com/jarcoal/httpmock"
 	"github.com/schollz/progressbar/v3"
 	"github.com/tlinden/cenophane/common"
-	"github.com/tlinden/up/upctl/cfg"
+	"github.com/tlinden/cenophane/upctl/cfg"
 	"mime"
 	"os"
 	"path/filepath"
@@ -79,6 +80,11 @@ func Setup(c *cfg.Config, path string) *Request {
 		client.SetCommonBearerAuthToken(c.Apikey)
 	}
 
+	if c.Mock {
+		// intercept, used by unit tests
+		httpmock.ActivateNonDefault(client.GetClient())
+	}
+
 	return &Request{Url: c.Endpoint + path, R: R}
 
 }
@@ -123,19 +129,21 @@ func UploadFiles(c *cfg.Config, args []string) error {
 		return err
 	}
 
-	// progres bar
-	bar := progressbar.Default(100)
-	var left float64
+	if !c.Silent {
+		// progres bar
+		bar := progressbar.Default(100)
+		var left float64
+		rq.R.SetUploadCallbackWithInterval(func(info req.UploadInfo) {
+			left = float64(info.UploadedSize) / float64(info.FileSize) * 100.0
+			bar.Add(int(left))
+		}, 10*time.Millisecond)
+	}
 
 	// actual post w/ settings
 	resp, err := rq.R.
 		SetFormData(map[string]string{
 			"expire": c.Expire,
 		}).
-		SetUploadCallbackWithInterval(func(info req.UploadInfo) {
-			left = float64(info.UploadedSize) / float64(info.FileSize) * 100.0
-			bar.Add(int(left))
-		}, 10*time.Millisecond).
 		Post(rq.Url)
 
 	if err != nil {

@@ -30,13 +30,19 @@ type Config struct {
 	Endpoint string
 	Debug    bool
 	Retries  int
-	Apikey   string
+	Silent   bool
+
+	// used for authentication
+	Apikey string
 
 	// upload
 	Expire string
 
-	// list
+	// used for filtering (list command)
 	Apicontext string
+
+	// required to intercept requests using httpmock in tests
+	Mock bool
 }
 
 func Getversion() string {

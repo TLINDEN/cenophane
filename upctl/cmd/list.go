@@ -18,8 +18,8 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/tlinden/up/upctl/cfg"
-	"github.com/tlinden/up/upctl/lib"
+	"github.com/tlinden/cenophane/upctl/cfg"
+	"github.com/tlinden/cenophane/upctl/lib"
 )
 
 func ListCommand(conf *cfg.Config) *cobra.Command {

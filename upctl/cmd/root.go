@@ -22,7 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"github.com/tlinden/up/upctl/cfg"
+	"github.com/tlinden/cenophane/upctl/cfg"
 	"os"
 	"strings"
 )
@@ -81,6 +81,7 @@ func Execute() {
 	// options
 	rootCmd.PersistentFlags().BoolVarP(&ShowVersion, "version", "v", false, "Print program version")
 	rootCmd.PersistentFlags().BoolVarP(&conf.Debug, "debug", "d", false, "Enable debugging")
+	rootCmd.PersistentFlags().BoolVarP(&conf.Silent, "silent", "s", false, "Disable progress bar and other noise")
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "custom config file")
 	rootCmd.PersistentFlags().IntVarP(&conf.Retries, "retries", "r", 3, "How often shall we retry to access our endpoint")
 	rootCmd.PersistentFlags().StringVarP(&conf.Endpoint, "endpoint", "p", "http://localhost:8080/api/v1", "upload api endpoint url")

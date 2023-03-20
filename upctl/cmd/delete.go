@@ -19,8 +19,8 @@ package cmd
 import (
 	"errors"
 	"github.com/spf13/cobra"
-	"github.com/tlinden/up/upctl/cfg"
-	"github.com/tlinden/up/upctl/lib"
+	"github.com/tlinden/cenophane/upctl/cfg"
+	"github.com/tlinden/cenophane/upctl/lib"
 )
 
 func DeleteCommand(conf *cfg.Config) *cobra.Command {
