@@ -21,8 +21,8 @@ import (
 	"archive/zip"
 	"errors"
 	"github.com/gofiber/fiber/v2"
-	"github.com/tlinden/cenophane/cfg"
-	"github.com/tlinden/cenophane/common"
+	"github.com/tlinden/ephemerup/cfg"
+	"github.com/tlinden/ephemerup/common"
 	"io"
 	"mime/multipart"
 	"os"
@@ -83,7 +83,7 @@ func ProcessFormFiles(cfg *cfg.Config, members []string, id string) (string, str
 			return "", "", err
 		}
 
-		returnUrl = strings.Join([]string{cfg.Url + cfg.ApiPrefix + ApiVersion, "file", id, zipfile}, "/")
+		returnUrl = strings.Join([]string{cfg.Url, "download", id, zipfile}, "/")
 		Filename = zipfile
 
 		// clean up after us

@@ -23,8 +23,8 @@ import (
 	"errors"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/keyauth/v2"
-	"github.com/tlinden/cenophane/cfg"
-	"regexp"
+	"github.com/tlinden/ephemerup/cfg"
+	"github.com/tlinden/ephemerup/common"
 )
 
 // these vars can be savely global, since they don't change ever
@@ -39,20 +39,12 @@ var (
 		Message: "Invalid API key",
 	}
 
-	Authurls []*regexp.Regexp
-	Apikeys  []cfg.Apicontext
+	Apikeys []cfg.Apicontext
 )
 
 // fill from server: accepted keys
 func AuthSetApikeys(keys []cfg.Apicontext) {
 	Apikeys = keys
-}
-
-// fill from server: endpoints we need to authenticate
-func AuthSetEndpoints(prefix string, version string, endpoints []string) {
-	for _, endpoint := range endpoints {
-		Authurls = append(Authurls, regexp.MustCompile("^"+prefix+version+endpoint))
-	}
 }
 
 // make sure we always return JSON encoded errors
@@ -64,6 +56,33 @@ func AuthErrHandler(ctx *fiber.Ctx, err error) error {
 	}
 
 	return ctx.JSON(errInvalid)
+}
+
+// validator hook, validates  incoming api key against  form id, which
+// also acts as onetime api key
+func AuthValidateOnetimeKey(c *fiber.Ctx, key string, db *Db) (bool, error) {
+	resp, err := db.Get("", key, common.TypeForm)
+	if err != nil {
+		return false, errors.New("Onetime key doesn't match any form id!")
+	}
+
+	if len(resp.Forms) != 1 {
+		return false, errors.New("db.Get(form) returned no results and no errors!")
+	}
+
+	sess, err := Sessionstore.Get(c)
+
+	// store the  result into the session, the 'formid'  key tells the
+	// upload handler that the apicontext it sees is in fact a form id
+	// and has to be deleted if set to asap.
+	sess.Set("apicontext", resp.Forms[0].Context)
+	sess.Set("formid", key)
+
+	if err := sess.Save(); err != nil {
+		return false, errors.New("Unable to save session store!")
+	}
+
+	return true, nil
 }
 
 // validator hook, called by fiber via server keyauth.New()

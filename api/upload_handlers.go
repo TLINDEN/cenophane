@@ -21,9 +21,10 @@ import (
 	//"github.com/alecthomas/repr"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	"github.com/tlinden/cenophane/cfg"
-	"github.com/tlinden/cenophane/common"
+	"github.com/tlinden/ephemerup/cfg"
+	"github.com/tlinden/ephemerup/common"
 
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,7 +35,7 @@ type SetContext struct {
 	Apicontext string `json:"apicontext" form:"apicontext"`
 }
 
-func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
+func UploadPost(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	// supports upload of multiple files with:
 	//
 	// curl -X POST localhost:8080/putfile \
@@ -62,10 +63,10 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// init upload obj
-	entry := &common.Upload{Id: id, Uploaded: common.Timestamp{Time: time.Now()}}
+	entry := &common.Upload{Id: id, Created: common.Timestamp{Time: time.Now()}}
 
 	// retrieve the API Context name from the session
-	apicontext, err := GetApicontext(c)
+	apicontext, err := SessionGetApicontext(c)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusInternalServerError,
 			"Unable to initialize session store from context: "+err.Error())
@@ -106,6 +107,7 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 			"Could not process uploaded file[s]: "+err.Error())
 	}
 	entry.File = Newfilename
+	entry.Url = returnUrl
 
 	Log("Now serving %s from %s/%s", returnUrl, cfg.StorageDir, id)
 	Log("Expire set to: %s", entry.Expire)
@@ -115,14 +117,41 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	go db.Insert(id, entry)
 
 	// everything went well so far
-	res := &common.Uploads{Entries: []*common.Upload{entry}}
+	res := &common.Response{Uploads: []*common.Upload{entry}}
 	res.Success = true
-	res.Message = "Download url: " + returnUrl
 	res.Code = fiber.StatusOK
+
+	// ok, check  if we need to remove  a form, if so we do  it in the
+	// background.  delete error  doesn't lead  to upload  failure, we
+	// only log it. same applies to mail notification.
+	formid, _ := SessionGetFormId(c)
+	if formid != "" {
+		go func() {
+			r, err := db.Get(apicontext, formid, common.TypeForm)
+			if err == nil {
+				if len(r.Forms) == 1 {
+					if r.Forms[0].Expire == "asap" {
+						db.Delete(apicontext, formid)
+					}
+
+					// email notification to form creator
+					if r.Forms[0].Notify != "" {
+						body := fmt.Sprintf("Upload is available under: %s", returnUrl)
+						subject := fmt.Sprintf("Upload form %s has been used", formid)
+						err := Sendmail(cfg, r.Forms[0].Notify, body, subject)
+						if err != nil {
+							Log("Failed to send mail: %s", err.Error())
+						}
+					}
+				}
+			}
+		}()
+	}
+
 	return c.Status(fiber.StatusOK).JSON(res)
 }
 
-func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) error {
+func UploadFetch(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) error {
 	// deliver  a file and delete  it if expire is set to asap
 
 	// we ignore c.Params("file"), cause  it may be malign. Also we've
@@ -133,16 +162,21 @@ func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) error {
 	}
 
 	// retrieve the API Context name from the session
-	apicontext, err := GetApicontext(c)
+	apicontext, err := SessionGetApicontext(c)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusInternalServerError,
 			"Unable to initialize session store from context: "+err.Error())
 	}
 
-	upload, err := db.Lookup(apicontext, id)
+	response, err := db.Lookup(apicontext, id, common.TypeUpload)
 	if err != nil {
 		// non existent db entry with that id, or other db error, see logs
 		return fiber.NewError(404, "No download with that id could be found!")
+	}
+
+	var upload *common.Upload
+	if len(response.Uploads) > 0 {
+		upload = response.Uploads[0]
 	}
 
 	file := upload.File
@@ -173,7 +207,7 @@ func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) error {
 }
 
 // delete file, id dir and db entry
-func DeleteUpload(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
+func UploadDelete(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 
 	id, err := common.Untaint(c.Params("id"), cfg.RegKey)
 	if err != nil {
@@ -187,7 +221,7 @@ func DeleteUpload(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// retrieve the API Context name from the session
-	apicontext, err := GetApicontext(c)
+	apicontext, err := SessionGetApicontext(c)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusInternalServerError,
 			"Unable to initialize session store from context: "+err.Error())
@@ -206,7 +240,7 @@ func DeleteUpload(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 }
 
 // returns the whole list + error code, no post processing by server
-func List(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
+func UploadsList(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	// fetch filter from body(json expected)
 	setcontext := new(SetContext)
 	if err := c.BodyParser(setcontext); err != nil {
@@ -221,14 +255,14 @@ func List(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// retrieve the API Context name from the session
-	apicontext, err := GetApicontext(c)
+	apicontext, err := SessionGetApicontext(c)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusInternalServerError,
 			"Unable to initialize session store from context: "+err.Error())
 	}
 
 	// get list
-	uploads, err := db.List(apicontext, filter)
+	uploads, err := db.List(apicontext, filter, common.TypeUpload)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"Unable to list uploads: "+err.Error())
@@ -242,7 +276,7 @@ func List(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 }
 
 // returns just one upload obj + error code, no post processing by server
-func Describe(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
+func UploadDescribe(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	id, err := common.Untaint(c.Params("id"), cfg.RegKey)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
@@ -250,25 +284,25 @@ func Describe(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// retrieve the API Context name from the session
-	apicontext, err := GetApicontext(c)
+	apicontext, err := SessionGetApicontext(c)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusInternalServerError,
 			"Unable to initialize session store from context: "+err.Error())
 	}
 
-	uploads, err := db.Get(apicontext, id)
+	response, err := db.Get(apicontext, id, common.TypeUpload)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"No upload with that id could be found!")
 	}
 
-	for _, upload := range uploads.Entries {
+	for _, upload := range response.Uploads {
 		upload.Url = strings.Join([]string{cfg.Url, "download", id, upload.File}, "/")
 	}
 
 	// if we reached this point we can signal success
-	uploads.Success = true
-	uploads.Code = fiber.StatusOK
+	response.Success = true
+	response.Code = fiber.StatusOK
 
-	return c.Status(fiber.StatusOK).JSON(uploads)
+	return c.Status(fiber.StatusOK).JSON(response)
 }

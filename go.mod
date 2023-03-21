@@ -1,4 +1,4 @@
-module github.com/tlinden/cenophane
+module github.com/tlinden/ephemerup
 
 go 1.18
 
@@ -13,12 +13,13 @@ require (
 	github.com/knadh/koanf/providers/posflag v0.1.0
 	github.com/knadh/koanf/v2 v2.0.0
 	github.com/spf13/pflag v1.0.5
-	github.com/tlinden/cenophane/common v0.0.0-00010101000000-000000000000
+	github.com/tlinden/ephemerup/common v0.0.0-00010101000000-000000000000
 	go.etcd.io/bbolt v1.3.7
 )
 
 require (
 	github.com/andybalholm/brotli v1.0.4 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/klauspost/compress v1.15.9 // indirect
@@ -26,6 +27,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
+	github.com/maxatome/go-testdeep v1.13.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
@@ -40,4 +42,4 @@ require (
 	golang.org/x/sys v0.4.0 // indirect
 )
 
-replace github.com/tlinden/cenophane/common => ./common
+replace github.com/tlinden/ephemerup/common => ./common

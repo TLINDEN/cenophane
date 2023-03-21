@@ -1,4 +1,4 @@
-module github.com/tlinden/cenophane/upctl
+module github.com/tlinden/ephemerup/upctl
 
 go 1.18
 
@@ -10,10 +10,11 @@ require (
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.15.0
-	github.com/tlinden/cenophane/common v0.0.0-00010101000000-000000000000
+	github.com/tlinden/ephemerup/common v0.0.0-00010101000000-000000000000
 )
 
 require (
+	github.com/alecthomas/repr v0.2.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/golang/mock v1.6.0 // indirect
@@ -50,4 +51,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/tlinden/cenophane/common => ../common
+replace github.com/tlinden/ephemerup/common => ../common

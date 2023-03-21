@@ -32,8 +32,16 @@ type Apicontext struct {
 	Key     string `koanf:"key"`
 }
 
+type Mailsettings struct {
+	Server   string `koanf:"server"`
+	Port     string `koanf:"port"`
+	From     string `koanf:"from"`
+	Password string `koanf:"password"`
+}
+
 // holds the whole configs, filled by commandline flags, env and config file
 type Config struct {
+	// Flags+config file settings
 	ApiPrefix  string `koanf:"apiprefix"` // path prefix
 	Debug      bool   `koanf:"debug"`
 	Listen     string `koanf:"listen"`     // [host]:port
@@ -42,6 +50,7 @@ type Config struct {
 	DbFile     string `koanf:"dbfile"`
 	Super      string `koanf:"super"`     // the apicontext which has all permissions
 	Frontpage  string `koanf:"frontpage"` // a html file
+	Formpage   string `koanf:"formpage"`  // a html file
 
 	// fiber settings, see:
 	// https://docs.gofiber.io/api/fiber/#config
@@ -55,10 +64,14 @@ type Config struct {
 	// only settable via config
 	Apicontexts []Apicontext `koanf:"apicontext"`
 
+	// smtp settings
+	Mail Mailsettings `koanf:mail`
+
 	// Internals only
 	RegNormalizedFilename *regexp.Regexp
 	RegDuration           *regexp.Regexp
 	RegKey                *regexp.Regexp
+	RegEmail              *regexp.Regexp
 	CleanInterval         time.Duration
 	DefaultExpire         int
 }
@@ -70,7 +83,7 @@ func Getversion() string {
 	//  main  branch,   and  cfg.Version-$branch-$lastcommit-$date  on
 	// development branch
 
-	return fmt.Sprintf("This is cenophane server version %s", VERSION)
+	return fmt.Sprintf("This is ephemerup server version %s", VERSION)
 }
 
 func (c *Config) GetVersion() string {
@@ -105,6 +118,8 @@ func (c *Config) ApplyDefaults() {
 	c.RegNormalizedFilename = regexp.MustCompile(`[^\w\d\-_\.]`)
 	c.RegDuration = regexp.MustCompile(`[^dhms0-9]`)
 	c.RegKey = regexp.MustCompile(`[^a-zA-Z0-9\-]`)
+	c.RegEmail = regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
+	c.RegEmail = regexp.MustCompile(`[^a-z0-9._%+\-@0-9]`)
 
 	c.CleanInterval = 10 * time.Second
 	c.DefaultExpire = 30 * 86400 // 1 month

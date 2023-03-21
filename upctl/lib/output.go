@@ -23,8 +23,9 @@ import (
 	"fmt"
 	"github.com/imroc/req/v3"
 	"github.com/olekukonko/tablewriter"
-	"github.com/tlinden/cenophane/common"
-	"os"
+	"github.com/tlinden/ephemerup/common"
+	"io"
+	"strings"
 	"time"
 )
 
@@ -34,15 +35,17 @@ func prepareExpire(expire string, start common.Timestamp) string {
 	case "asap":
 		return "On first access"
 	default:
-		return time.Unix(start.Unix()+int64(common.Duration2int(expire)), 0).Format("2006-01-02 15:04:05")
+		return time.Unix(start.Unix()+int64(common.Duration2int(expire)), 0).
+			Format("2006-01-02 15:04:05")
 	}
 
 	return ""
 }
 
 // generic table writer
-func WriteTable(headers []string, data [][]string) {
-	table := tablewriter.NewWriter(os.Stdout)
+func WriteTable(w io.Writer, headers []string, data [][]string) {
+	tableString := &strings.Builder{}
+	table := tablewriter.NewWriter(tableString)
 
 	table.SetHeader(headers)
 	table.AppendBulk(data)
@@ -60,76 +63,95 @@ func WriteTable(headers []string, data [][]string) {
 	table.SetNoWhiteSpace(true)
 
 	table.Render()
+
+	fmt.Fprintln(w, tableString.String())
 }
 
-// output like psql \x
-func WriteExtended(uploads *common.Uploads) {
+/* Print output like psql \x
+
+   Prints  all  Uploads  and  Forms which  exist  in  common.Response,
+   however, we expect only one kind  of them to be actually filled, so
+   the function can be used for forms and uploads.
+*/
+func WriteExtended(w io.Writer, response *common.Response) {
 	format := fmt.Sprintf("%%%ds: %%s\n", Maxwidth)
 
 	// we shall only have 1 element, however, if we ever support more, here we go
-	for _, entry := range uploads.Entries {
-		expire := prepareExpire(entry.Expire, entry.Uploaded)
-		fmt.Printf(format, "Id", entry.Id)
-		fmt.Printf(format, "Expire", expire)
-		fmt.Printf(format, "Context", entry.Context)
-		fmt.Printf(format, "Uploaded", entry.Uploaded)
-		fmt.Printf(format, "Filename", entry.File)
-		fmt.Printf(format, "Url", entry.Url)
-		fmt.Println()
+	for _, entry := range response.Uploads {
+		expire := prepareExpire(entry.Expire, entry.Created)
+		fmt.Fprintf(w, format, "Id", entry.Id)
+		fmt.Fprintf(w, format, "Expire", expire)
+		fmt.Fprintf(w, format, "Context", entry.Context)
+		fmt.Fprintf(w, format, "Created", entry.Created)
+		fmt.Fprintf(w, format, "Filename", entry.File)
+		fmt.Fprintf(w, format, "Url", entry.Url)
+		fmt.Fprintln(w)
+	}
+
+	for _, entry := range response.Forms {
+		expire := prepareExpire(entry.Expire, entry.Created)
+		fmt.Fprintf(w, format, "Id", entry.Id)
+		fmt.Fprintf(w, format, "Expire", expire)
+		fmt.Fprintf(w, format, "Context", entry.Context)
+		fmt.Fprintf(w, format, "Created", entry.Created)
+		fmt.Fprintf(w, format, "Description", entry.Description)
+		fmt.Fprintf(w, format, "Notify", entry.Notify)
+		fmt.Fprintf(w, format, "Url", entry.Url)
+		fmt.Fprintln(w)
 	}
 }
 
 // extract an common.Uploads{} struct from json response
-func GetUploadsFromResponse(resp *req.Response) (*common.Uploads, error) {
-	uploads := common.Uploads{}
+func GetResponse(resp *req.Response) (*common.Response, error) {
+	response := common.Response{}
 
-	if err := json.Unmarshal([]byte(resp.String()), &uploads); err != nil {
+	if err := json.Unmarshal([]byte(resp.String()), &response); err != nil {
 		return nil, errors.New("Could not unmarshall JSON response: " + err.Error())
 	}
 
-	if !uploads.Success {
-		return nil, errors.New(uploads.Message)
+	if !response.Success {
+		return nil, errors.New(response.Message)
 	}
 
-	return &uploads, nil
+	return &response, nil
 }
 
 // turn the Uploads{} struct into a table and print it
-func RespondTable(resp *req.Response) error {
-	uploads, err := GetUploadsFromResponse(resp)
+func UploadsRespondTable(w io.Writer, resp *req.Response) error {
+	response, err := GetResponse(resp)
 	if err != nil {
 		return err
 	}
 
-	if uploads.Message != "" {
-		fmt.Println(uploads.Message)
+	if response.Message != "" {
+		fmt.Fprintln(w, response.Message)
 	}
 
 	// tablewriter
 	data := [][]string{}
-	for _, entry := range uploads.Entries {
+	for _, entry := range response.Uploads {
 		data = append(data, []string{
-			entry.Id, entry.Expire, entry.Context, entry.Uploaded.Format("2006-01-02 15:04:05"),
+			entry.Id, entry.Expire, entry.Context, entry.Created.Format("2006-01-02 15:04:05"),
 		})
 	}
 
-	WriteTable([]string{"ID", "EXPIRE", "CONTEXT", "UPLOADED"}, data)
+	WriteTable(w, []string{"ID", "EXPIRE", "CONTEXT", "CREATED"}, data)
 
 	return nil
 }
 
 // turn the Uploads{} struct into xtnd output and print it
-func RespondExtended(resp *req.Response) error {
-	uploads, err := GetUploadsFromResponse(resp)
+func RespondExtended(w io.Writer, resp *req.Response) error {
+	response, err := GetResponse(resp)
 	if err != nil {
 		return err
 	}
 
-	if uploads.Message != "" {
-		fmt.Println(uploads.Message)
+	if response.Message != "" {
+		fmt.Fprintln(w, response.Message)
 	}
 
-	WriteExtended(uploads)
+	WriteExtended(w, response)
 
 	return nil
 }

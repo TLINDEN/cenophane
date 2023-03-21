@@ -33,7 +33,7 @@ all: buildlocal
 
 
 buildlocal:
-	go build -ldflags "-X 'github.com/tlinden/cenophane/upctl/cfg.VERSION=$(VERSION)'"
+	go build -ldflags "-X 'github.com/tlinden/ephemerup/upctl/cfg.VERSION=$(VERSION)'"
 
 release:
 	./mkrel.sh $(tool) $(version)
