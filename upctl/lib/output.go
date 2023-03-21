@@ -24,7 +24,8 @@ import (
 	"github.com/imroc/req/v3"
 	"github.com/olekukonko/tablewriter"
 	"github.com/tlinden/cenophane/common"
-	"os"
+	"io"
+	"strings"
 	"time"
 )
 
@@ -41,8 +42,9 @@ func prepareExpire(expire string, start common.Timestamp) string {
 }
 
 // generic table writer
-func WriteTable(headers []string, data [][]string) {
-	table := tablewriter.NewWriter(os.Stdout)
+func WriteTable(w io.Writer, headers []string, data [][]string) {
+	tableString := &strings.Builder{}
+	table := tablewriter.NewWriter(tableString)
 
 	table.SetHeader(headers)
 	table.AppendBulk(data)
@@ -60,22 +62,24 @@ func WriteTable(headers []string, data [][]string) {
 	table.SetNoWhiteSpace(true)
 
 	table.Render()
+
+	fmt.Fprintln(w, tableString.String())
 }
 
 // output like psql \x
-func WriteExtended(uploads *common.Uploads) {
+func WriteExtended(w io.Writer, uploads *common.Uploads) {
 	format := fmt.Sprintf("%%%ds: %%s\n", Maxwidth)
 
 	// we shall only have 1 element, however, if we ever support more, here we go
 	for _, entry := range uploads.Entries {
 		expire := prepareExpire(entry.Expire, entry.Uploaded)
-		fmt.Printf(format, "Id", entry.Id)
-		fmt.Printf(format, "Expire", expire)
-		fmt.Printf(format, "Context", entry.Context)
-		fmt.Printf(format, "Uploaded", entry.Uploaded)
-		fmt.Printf(format, "Filename", entry.File)
-		fmt.Printf(format, "Url", entry.Url)
-		fmt.Println()
+		fmt.Fprintf(w, format, "Id", entry.Id)
+		fmt.Fprintf(w, format, "Expire", expire)
+		fmt.Fprintf(w, format, "Context", entry.Context)
+		fmt.Fprintf(w, format, "Uploaded", entry.Uploaded)
+		fmt.Fprintf(w, format, "Filename", entry.File)
+		fmt.Fprintf(w, format, "Url", entry.Url)
+		fmt.Fprintln(w)
 	}
 }
 
@@ -95,14 +99,14 @@ func GetUploadsFromResponse(resp *req.Response) (*common.Uploads, error) {
 }
 
 // turn the Uploads{} struct into a table and print it
-func RespondTable(resp *req.Response) error {
+func RespondTable(w io.Writer, resp *req.Response) error {
 	uploads, err := GetUploadsFromResponse(resp)
 	if err != nil {
 		return err
 	}
 
 	if uploads.Message != "" {
-		fmt.Println(uploads.Message)
+		fmt.Fprintln(w, uploads.Message)
 	}
 
 	// tablewriter
@@ -113,23 +117,23 @@ func RespondTable(resp *req.Response) error {
 		})
 	}
 
-	WriteTable([]string{"ID", "EXPIRE", "CONTEXT", "UPLOADED"}, data)
+	WriteTable(w, []string{"ID", "EXPIRE", "CONTEXT", "UPLOADED"}, data)
 
 	return nil
 }
 
 // turn the Uploads{} struct into xtnd output and print it
-func RespondExtended(resp *req.Response) error {
+func RespondExtended(w io.Writer, resp *req.Response) error {
 	uploads, err := GetUploadsFromResponse(resp)
 	if err != nil {
 		return err
 	}
 
 	if uploads.Message != "" {
-		fmt.Println(uploads.Message)
+		fmt.Fprintln(w, uploads.Message)
 	}
 
-	WriteExtended(uploads)
+	WriteExtended(w, uploads)
 
 	return nil
 }

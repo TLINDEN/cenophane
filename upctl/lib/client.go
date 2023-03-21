@@ -27,6 +27,7 @@ import (
 	"github.com/schollz/progressbar/v3"
 	"github.com/tlinden/cenophane/common"
 	"github.com/tlinden/cenophane/upctl/cfg"
+	"io"
 	"mime"
 	"os"
 	"path/filepath"
@@ -51,6 +52,9 @@ type ListParams struct {
 
 const Maxwidth = 10
 
+/*
+   Create a new request object for outgoing queries
+*/
 func Setup(c *cfg.Config, path string) *Request {
 	client := req.C()
 	if c.Debug {
@@ -86,9 +90,12 @@ func Setup(c *cfg.Config, path string) *Request {
 	}
 
 	return &Request{Url: c.Endpoint + path, R: R}
-
 }
 
+/*
+   Iterate over args, considering the  elements are filenames, and add
+   them to the request.
+*/
 func GatherFiles(rq *Request, args []string) error {
 	for _, file := range args {
 		info, err := os.Stat(file)
@@ -120,7 +127,42 @@ func GatherFiles(rq *Request, args []string) error {
 	return nil
 }
 
-func UploadFiles(c *cfg.Config, args []string) error {
+/*
+   Check  HTTP  Response Code  and  validate  JSON status  output,  if
+   any. Turns'em into a regular error
+*/
+func HandleResponse(c *cfg.Config, resp *req.Response) error {
+	// we expect a json response, extract the error, if any
+	r := Response{}
+
+	if err := json.Unmarshal([]byte(resp.String()), &r); err != nil {
+		// text output!
+		r.Message = resp.String()
+	}
+
+	if c.Debug {
+		trace := resp.Request.TraceInfo()
+		fmt.Println(trace.Blame())
+		fmt.Println("----------")
+		fmt.Println(trace)
+	}
+
+	if !r.Success {
+		if len(r.Message) == 0 {
+			if resp.Err != nil {
+				return resp.Err
+			} else {
+				return errors.New("Unknown error")
+			}
+		} else {
+			return errors.New(r.Message)
+		}
+	}
+
+	return nil
+}
+
+func UploadFiles(w io.Writer, c *cfg.Config, args []string) error {
 	// setup url, req.Request, timeout handling etc
 	rq := Setup(c, "/file/")
 
@@ -150,46 +192,14 @@ func UploadFiles(c *cfg.Config, args []string) error {
 		return err
 	}
 
-	return RespondExtended(resp)
+	if err := HandleResponse(c, resp); err != nil {
+		return err
+	}
+
+	return RespondExtended(w, resp)
 }
 
-func HandleResponse(c *cfg.Config, resp *req.Response) error {
-	// we expect a json response, extract the error, if any
-	r := Response{}
-
-	if err := json.Unmarshal([]byte(resp.String()), &r); err != nil {
-		// text output!
-		r.Message = resp.String()
-	}
-
-	if c.Debug {
-		trace := resp.Request.TraceInfo()
-		fmt.Println(trace.Blame())
-		fmt.Println("----------")
-		fmt.Println(trace)
-	}
-
-	if !r.Success {
-		if len(r.Message) == 0 {
-			if resp.Err != nil {
-				return resp.Err
-			} else {
-				return errors.New("Unknown error")
-			}
-		} else {
-			return errors.New(r.Message)
-		}
-	}
-
-	// all right
-	if r.Message != "" {
-		fmt.Println(r.Message)
-	}
-
-	return nil
-}
-
-func List(c *cfg.Config, args []string) error {
+func List(w io.Writer, c *cfg.Config, args []string) error {
 	rq := Setup(c, "/list/")
 
 	params := &ListParams{Apicontext: c.Apicontext}
@@ -201,10 +211,14 @@ func List(c *cfg.Config, args []string) error {
 		return err
 	}
 
-	return RespondTable(resp)
+	if err := HandleResponse(c, resp); err != nil {
+		return err
+	}
+
+	return RespondTable(w, resp)
 }
 
-func Delete(c *cfg.Config, args []string) error {
+func Delete(w io.Writer, c *cfg.Config, args []string) error {
 	for _, id := range args {
 		rq := Setup(c, "/file/"+id+"/")
 
@@ -218,13 +232,17 @@ func Delete(c *cfg.Config, args []string) error {
 			return err
 		}
 
-		fmt.Printf("Upload %s successfully deleted.\n", id)
+		fmt.Fprintf(w, "Upload %s successfully deleted.\n", id)
 	}
 
 	return nil
 }
 
-func Describe(c *cfg.Config, args []string) error {
+func Describe(w io.Writer, c *cfg.Config, args []string) error {
+	if len(args) == 0 {
+		return errors.New("No id provided!")
+	}
+
 	id := args[0] // we describe only 1 object
 
 	rq := Setup(c, "/upload/"+id+"/")
@@ -234,25 +252,37 @@ func Describe(c *cfg.Config, args []string) error {
 		return err
 	}
 
-	return RespondExtended(resp)
-}
-
-func Download(c *cfg.Config, args []string) error {
-	id := args[0]
-
-	// progres bar
-	bar := progressbar.Default(100)
-
-	callback := func(info req.DownloadInfo) {
-		if info.Response.Response != nil {
-			bar.Add(1)
-		}
+	if err := HandleResponse(c, resp); err != nil {
+		return err
 	}
 
+	return RespondExtended(w, resp)
+}
+
+func Download(w io.Writer, c *cfg.Config, args []string) error {
+	if len(args) == 0 {
+		return errors.New("No id provided!")
+	}
+
+	id := args[0]
+
 	rq := Setup(c, "/file/"+id+"/")
+
+	if !c.Silent {
+		// progres bar
+		bar := progressbar.Default(100)
+
+		callback := func(info req.DownloadInfo) {
+			if info.Response.Response != nil {
+				bar.Add(1)
+			}
+		}
+
+		rq.R.SetDownloadCallback(callback)
+	}
+
 	resp, err := rq.R.
 		SetOutputFile(id).
-		SetDownloadCallback(callback).
 		Get(rq.Url)
 
 	if err != nil {
@@ -278,7 +308,7 @@ func Download(c *cfg.Config, args []string) error {
 		return fmt.Errorf("\nUnable to rename file: " + err.Error())
 	}
 
-	fmt.Printf("%s successfully downloaded to file %s.", id, cleanfilename)
+	fmt.Fprintf(w, "%s successfully downloaded to file %s.", id, cleanfilename)
 
 	return nil
 }
