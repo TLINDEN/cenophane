@@ -56,29 +56,29 @@ func Runserver(conf *cfg.Config, args []string) error {
 	api := router.Group(conf.ApiPrefix + ApiVersion)
 	{
 		// upload
-		api.Post("/uploads/", auth, func(c *fiber.Ctx) error {
-			return FilePut(c, conf, db)
+		api.Post("/uploads", auth, func(c *fiber.Ctx) error {
+			return UploadPost(c, conf, db)
 		})
 
 		// remove
-		api.Delete("/uploads/:id/", auth, func(c *fiber.Ctx) error {
-			err := DeleteUpload(c, conf, db)
+		api.Delete("/uploads/:id", auth, func(c *fiber.Ctx) error {
+			err := UploadDelete(c, conf, db)
 			return SendResponse(c, "", err)
 		})
 
 		// listing
 		api.Get("/uploads", auth, func(c *fiber.Ctx) error {
-			return List(c, conf, db)
+			return UploadsList(c, conf, db)
 		})
 
 		// info/describe
-		api.Get("/upload/:id/", auth, func(c *fiber.Ctx) error {
-			return Describe(c, conf, db)
+		api.Get("/uploads/:id", auth, func(c *fiber.Ctx) error {
+			return UploadDescribe(c, conf, db)
 		})
 
 		// download w/o expire
-		api.Get("/download/:id/", auth, func(c *fiber.Ctx) error {
-			return FileGet(c, conf, db)
+		api.Get("/uploads/:id/file", auth, func(c *fiber.Ctx) error {
+			return UploadFetch(c, conf, db)
 		})
 	}
 
@@ -89,11 +89,11 @@ func Runserver(conf *cfg.Config, args []string) error {
 		})
 
 		router.Get("/download/:id/:file", func(c *fiber.Ctx) error {
-			return FileGet(c, conf, db, shallExpire)
+			return UploadFetch(c, conf, db, shallExpire)
 		})
 
-		router.Get("/download/:id/", func(c *fiber.Ctx) error {
-			return FileGet(c, conf, db, shallExpire)
+		router.Get("/download/:id", func(c *fiber.Ctx) error {
+			return UploadFetch(c, conf, db, shallExpire)
 		})
 	}
 

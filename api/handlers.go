@@ -34,7 +34,7 @@ type SetContext struct {
 	Apicontext string `json:"apicontext" form:"apicontext"`
 }
 
-func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
+func UploadPost(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	// supports upload of multiple files with:
 	//
 	// curl -X POST localhost:8080/putfile \
@@ -106,6 +106,7 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 			"Could not process uploaded file[s]: "+err.Error())
 	}
 	entry.File = Newfilename
+	entry.Url = returnUrl
 
 	Log("Now serving %s from %s/%s", returnUrl, cfg.StorageDir, id)
 	Log("Expire set to: %s", entry.Expire)
@@ -117,12 +118,11 @@ func FilePut(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	// everything went well so far
 	res := &common.Uploads{Entries: []*common.Upload{entry}}
 	res.Success = true
-	res.Message = "Download url: " + returnUrl
 	res.Code = fiber.StatusOK
 	return c.Status(fiber.StatusOK).JSON(res)
 }
 
-func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) error {
+func UploadFetch(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) error {
 	// deliver  a file and delete  it if expire is set to asap
 
 	// we ignore c.Params("file"), cause  it may be malign. Also we've
@@ -173,7 +173,7 @@ func FileGet(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) error {
 }
 
 // delete file, id dir and db entry
-func DeleteUpload(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
+func UploadDelete(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 
 	id, err := common.Untaint(c.Params("id"), cfg.RegKey)
 	if err != nil {
@@ -206,7 +206,7 @@ func DeleteUpload(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 }
 
 // returns the whole list + error code, no post processing by server
-func List(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
+func UploadsList(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	// fetch filter from body(json expected)
 	setcontext := new(SetContext)
 	if err := c.BodyParser(setcontext); err != nil {
@@ -228,7 +228,7 @@ func List(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// get list
-	uploads, err := db.List(apicontext, filter)
+	uploads, err := db.UploadsList(apicontext, filter)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"Unable to list uploads: "+err.Error())
@@ -242,7 +242,7 @@ func List(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 }
 
 // returns just one upload obj + error code, no post processing by server
-func Describe(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
+func UploadDescribe(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	id, err := common.Untaint(c.Params("id"), cfg.RegKey)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,

@@ -135,16 +135,20 @@ func HandleResponse(c *cfg.Config, resp *req.Response) error {
 	// we expect a json response, extract the error, if any
 	r := Response{}
 
-	if err := json.Unmarshal([]byte(resp.String()), &r); err != nil {
-		// text output!
-		r.Message = resp.String()
-	}
-
 	if c.Debug {
 		trace := resp.Request.TraceInfo()
 		fmt.Println(trace.Blame())
 		fmt.Println("----------")
 		fmt.Println(trace)
+	}
+
+	if !resp.IsSuccessState() {
+		return fmt.Errorf("bad response: %s", resp.Status)
+	}
+
+	if err := json.Unmarshal([]byte(resp.String()), &r); err != nil {
+		// text output!
+		r.Message = resp.String()
 	}
 
 	if !r.Success {
@@ -200,7 +204,7 @@ func UploadFiles(w io.Writer, c *cfg.Config, args []string) error {
 }
 
 func List(w io.Writer, c *cfg.Config, args []string) error {
-	rq := Setup(c, "/list/")
+	rq := Setup(c, "/uploads")
 
 	params := &ListParams{Apicontext: c.Apicontext}
 	resp, err := rq.R.
@@ -245,7 +249,7 @@ func Describe(w io.Writer, c *cfg.Config, args []string) error {
 
 	id := args[0] // we describe only 1 object
 
-	rq := Setup(c, "/upload/"+id+"/")
+	rq := Setup(c, "/uploads/"+id+"/")
 	resp, err := rq.R.Get(rq.Url)
 
 	if err != nil {
@@ -266,7 +270,7 @@ func Download(w io.Writer, c *cfg.Config, args []string) error {
 
 	id := args[0]
 
-	rq := Setup(c, "/uploads/"+id+"/")
+	rq := Setup(c, "/uploads/"+id+"/file")
 
 	if !c.Silent {
 		// progres bar
@@ -287,6 +291,10 @@ func Download(w io.Writer, c *cfg.Config, args []string) error {
 
 	if err != nil {
 		return err
+	}
+
+	if !resp.IsSuccessState() {
+		return fmt.Errorf("bad response: %s", resp.Status)
 	}
 
 	_, params, err := mime.ParseMediaType(resp.Header.Get("Content-Disposition"))

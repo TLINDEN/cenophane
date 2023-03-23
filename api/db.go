@@ -106,7 +106,7 @@ func (db *Db) Delete(apicontext string, id string) error {
 	return err
 }
 
-func (db *Db) List(apicontext string, filter string) (*common.Uploads, error) {
+func (db *Db) UploadsList(apicontext string, filter string) (*common.Uploads, error) {
 	uploads := &common.Uploads{}
 
 	err := db.bolt.View(func(tx *bolt.Tx) error {

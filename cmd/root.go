@@ -59,7 +59,7 @@ func Execute() error {
 	f.BoolVarP(&conf.Debug, "debug", "d", false, "Enable debugging")
 	f.StringVarP(&conf.Listen, "listen", "l", ":8080", "listen to custom ip:port (use [ip]:port for ipv6)")
 	f.StringVarP(&conf.StorageDir, "storagedir", "s", "/tmp", "storage directory for uploaded files")
-	f.StringVarP(&conf.ApiPrefix, "apiprefix", "a", "/api", "API endpoint path")
+	f.StringVarP(&conf.ApiPrefix, "apiprefix", "a", "", "API endpoint path")
 	f.StringVarP(&conf.Url, "url", "u", "", "HTTP endpoint w/o path")
 	f.StringVarP(&conf.DbFile, "dbfile", "D", "/tmp/uploads.db", "Bold database file to use")
 	f.StringVarP(&conf.Super, "super", "", "", "The API Context which has permissions on all contexts")

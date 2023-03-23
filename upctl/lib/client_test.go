@@ -33,7 +33,7 @@ import (
 	"testing"
 )
 
-const endpoint string = "http://localhost:8080/api/v1"
+const endpoint string = "http://localhost:8080/v1"
 
 type Unit struct {
 	name     string
@@ -200,7 +200,7 @@ func TestList(t *testing.T) {
 			name:     "list",
 			apikey:   "token",
 			wantfail: false,
-			route:    "/list/",
+			route:    "/uploads",
 			sendcode: 200,
 			sendjson: listing,
 			files:    []string{},
@@ -211,7 +211,7 @@ func TestList(t *testing.T) {
 			name:     "list-catch-empty-json",
 			apikey:   "token",
 			wantfail: true,
-			route:    "/list/",
+			route:    "/uploads",
 			sendcode: 404,
 			sendjson: "",
 			files:    []string{},
@@ -221,7 +221,7 @@ func TestList(t *testing.T) {
 			name:     "list-catch-no-access",
 			apikey:   "token",
 			wantfail: true,
-			route:    "/list/",
+			route:    "/uploads",
 			sendcode: 503,
 			sendjson: listingnoaccess,
 			files:    []string{},
@@ -261,7 +261,7 @@ func TestDescribe(t *testing.T) {
 			name:     "describe",
 			apikey:   "token",
 			wantfail: false,
-			route:    "/upload/",
+			route:    "/uploads/",
 			sendcode: 200,
 			sendjson: listing,
 			files:    []string{"cc2c965a"},
@@ -272,7 +272,7 @@ func TestDescribe(t *testing.T) {
 			name:     "describe-catch-empty-json",
 			apikey:   "token",
 			wantfail: true,
-			route:    "/upload/",
+			route:    "/uploads/",
 			sendcode: 200,
 			sendjson: "",
 			files:    []string{"cc2c965a"},
@@ -282,7 +282,7 @@ func TestDescribe(t *testing.T) {
 			name:     "describe-catch-no-access",
 			apikey:   "token",
 			wantfail: true,
-			route:    "/upload/",
+			route:    "/uploads/",
 			sendcode: 503,
 			sendjson: listingnoaccess,
 			files:    []string{"cc2c965a"},
@@ -395,7 +395,7 @@ func TestDownload(t *testing.T) {
 
 	for _, unit := range tests {
 		var w bytes.Buffer
-		unit.route += unit.files[0] + "/"
+		unit.route += unit.files[0] + "/file"
 		Intercept(unit)
 		Check(t, unit, &w, Download(&w, conf, unit.files))
 

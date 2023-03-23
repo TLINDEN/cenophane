@@ -151,19 +151,19 @@ Every endpoint returns a JSON object. Each returned object contains the data req
 
 #### Endpoints
 
-| HTTP Method | Endpoint          | Parameters          | Input                      | Returns                               | Description                                   |
-|-------------|-------------------|---------------------|----------------------------|---------------------------------------|-----------------------------------------------|
-| GET         | /v1/uploads       | apicontext,q,expire |                            | List of upload objects                | list upload objects                           |
-| POST        | /v1/uploads       |                     | multipart-formdata file[s] | List of 1 upload object if successful | upload a file and create a new upload object  |
-| GET         | /v1/uploads/{id}  |                     |                            | List of 1 upload object if successful | list one specific upload object matching {id} |
-| DELETE      | /v1/uploads/{id}  |                     |                            | Noting                                | delete an upload object identified by {id}    |
-| PUT         | /v1/uploads/{id}  |                     | JSON upload object         | List of 1 upload object if successful | modify an upload object identified by {id}    |
-| GET         | /v1/download/{id} |                     |                            | File download                         | Download the file associated with the  object |
-| GET         | /v1/forms         | apicontext,q,expire |                            | List of form objects                  | list form objects                             |
-| POST        | /v1/forms         |                     | JSON form object           | List of 1 form object if successful   | create a new form object                      |
-| GET         | /v1/forms/{id}    |                     |                            | List of 1 form object if successful   | list one specific form object matching {id}   |
-| DELETE      | /v1/forms/{id}    |                     |                            | Noting                                | delete an form object identified by {id}      |
-| PUT         | /v1/forms/{id}    |                     | JSON form object           | List of 1 form object if successful   | modify an form object identified by {id}      |
+| HTTP Method | Endpoint              | Parameters          | Input                      | Returns                               | Description                                   |
+|-------------|-----------------------|---------------------|----------------------------|---------------------------------------|-----------------------------------------------|
+| GET         | /v1/uploads           | apicontext,q,expire |                            | List of upload objects                | list upload objects                           |
+| POST        | /v1/uploads           |                     | multipart-formdata file[s] | List of 1 upload object if successful | upload a file and create a new upload object  |
+| GET         | /v1/uploads/{id}      |                     |                            | List of 1 upload object if successful | list one specific upload object matching {id} |
+| DELETE      | /v1/uploads/{id}      |                     |                            | Noting                                | delete an upload object identified by {id}    |
+| PUT         | /v1/uploads/{id}      |                     | JSON upload object         | List of 1 upload object if successful | modify an upload object identified by {id}    |
+| GET         | /v1/uploads/{id}/file |                     |                            | File download                         | Download the file associated with the  object |
+| GET         | /v1/forms             | apicontext,q,expire |                            | List of form objects                  | list form objects                             |
+| POST        | /v1/forms             |                     | JSON form object           | List of 1 form object if successful   | create a new form object                      |
+| GET         | /v1/forms/{id}        |                     |                            | List of 1 form object if successful   | list one specific form object matching {id}   |
+| DELETE      | /v1/forms/{id}        |                     |                            | Noting                                | delete an form object identified by {id}      |
+| PUT         | /v1/forms/{id}        |                     | JSON form object           | List of 1 form object if successful   | modify an form object identified by {id}      |
 
 #### Consumer URLs
 
