@@ -141,6 +141,83 @@ the `-4` respective the `-6` commandline flags.
 It does not  support TLS at the  moment. Use a nginx  reverse proxy in
 front of it.
 
+### Server REST API
+
+Every endpoint returns a JSON object. Each returned object contains the data requested plus:
+
+- success: true or false
+- code: HTTP Response Code
+- message: error message, if success==false
+
+#### Endpoints
+
+| HTTP Method | Endpoint          | Parameters          | Input                      | Returns                               | Description                                   |
+|-------------|-------------------|---------------------|----------------------------|---------------------------------------|-----------------------------------------------|
+| GET         | /v1/uploads       | apicontext,q,expire |                            | List of upload objects                | list upload objects                           |
+| POST        | /v1/uploads       |                     | multipart-formdata file[s] | List of 1 upload object if successful | upload a file and create a new upload object  |
+| GET         | /v1/uploads/{id}  |                     |                            | List of 1 upload object if successful | list one specific upload object matching {id} |
+| DELETE      | /v1/uploads/{id}  |                     |                            | Noting                                | delete an upload object identified by {id}    |
+| PUT         | /v1/uploads/{id}  |                     | JSON upload object         | List of 1 upload object if successful | modify an upload object identified by {id}    |
+| GET         | /v1/download/{id} |                     |                            | File download                         | Download the file associated with the  object |
+| GET         | /v1/forms         | apicontext,q,expire |                            | List of form objects                  | list form objects                             |
+| POST        | /v1/forms         |                     | JSON form object           | List of 1 form object if successful   | create a new form object                      |
+| GET         | /v1/forms/{id}    |                     |                            | List of 1 form object if successful   | list one specific form object matching {id}   |
+| DELETE      | /v1/forms/{id}    |                     |                            | Noting                                | delete an form object identified by {id}      |
+| PUT         | /v1/forms/{id}    |                     | JSON form object           | List of 1 form object if successful   | modify an form object identified by {id}      |
+
+#### Consumer URLs
+
+The following endpoints are no API urls, but accessed directly by consumers using their browser or `wget` etc:
+
+| URL                     | Description                                             |
+|-------------------------|---------------------------------------------------------|
+| /                       | Display a short welcome message, can be customized      |
+| /download/{id}[/{file}] | Download link returned after an upload has been created |
+| /form/{id}              | Upload form for consumer                                |
+
+#### API Objects
+
+Response:
+
+| Field   | Data Type | Description                           |
+|---------|-----------|---------------------------------------|
+| success | bool      | if true the request was successful    |
+| code    | int       | HTTP response code                    |
+| message | string    | error message, if any                 |
+| uploads | array     | list of upload objects (may be empty) |
+| forms   | array     | list of form objects (may be empty)   |
+
+Upload:
+
+| Field    | Data Type        | Description                                                                                                                                 |
+|----------|------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| id       | string           | unique identifier for the object                                                                                                            |
+| expire   | string           | when the upload has to expire, either "asap" or a Duration using numbers and the letters d,h,m,s (days,hours,minutes,seconds), e.g. 2d4h30m |
+| file     | string           | filename after uploading, this is what a consumer gets when downloading it                                                                  |
+| members  | array of strings | list of the original filenames                                                                                                              |
+| uploaded | timestamp        | time of object creation                                                                                                                     |
+| context  | string           | the API context the upload has been created under                                                                                           |
+| url      | string           | the download URL                                                                                                                            |
+
+Form:
+
+| Field       | Data Type | Description                                                                                                                               |
+|-------------|-----------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| id          | string    | unique identifier for the object                                                                                                          |
+| expire      | string    | when the form has to expire, either "asap" or a Duration using numbers and the letters d,h,m,s (days,hours,minutes,seconds), e.g. 2d4h30m |
+| description | string    | arbitrary description, shown on the form page                                                                                             |
+| context     | string    | the API context the form has been created under and the uploaded files will be created on                                                 |
+| notify      | string    | email address of the form creator, who gets an email once the consumer has uploaded files using the form                                  |
+| created     | timestamp | time of object creation                                                                                                                   |
+| url         | string    | the form URL                                                                                                                              |
+
+Note: if the expire field for a form  is not set or set to "asap" only
+1 upload  object can be created  from it.  However, if  a duration has
+been specified, the  form can be used multiple times  and thus creates
+multiple upload objects.
+
+
+
 ## Client Usage
 
 ```
