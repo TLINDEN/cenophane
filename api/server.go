@@ -80,6 +80,29 @@ func Runserver(conf *cfg.Config, args []string) error {
 		api.Get("/uploads/:id/file", auth, func(c *fiber.Ctx) error {
 			return UploadFetch(c, conf, db)
 		})
+
+		// same for forms ************
+		api.Post("/forms", auth, func(c *fiber.Ctx) error {
+			return FormCreate(c, conf, db)
+		})
+
+		/*
+			// remove
+			api.Delete("/forms/:id", auth, func(c *fiber.Ctx) error {
+				err := FormDelete(c, conf, db)
+				return SendResponse(c, "", err)
+			})
+
+			// listing
+			api.Get("/forms", auth, func(c *fiber.Ctx) error {
+				return FormsList(c, conf, db)
+			})
+
+			// info/describe
+			api.Get("/forms/:id", auth, func(c *fiber.Ctx) error {
+				return FormDescribe(c, conf, db)
+			})
+		*/
 	}
 
 	// public routes
@@ -95,6 +118,12 @@ func Runserver(conf *cfg.Config, args []string) error {
 		router.Get("/download/:id", func(c *fiber.Ctx) error {
 			return UploadFetch(c, conf, db, shallExpire)
 		})
+
+		/*
+			router.Get("/form/:id", func(c *fiber.Ctx) error {
+				return FormFetch(c, conf, db, shallExpire)
+			})
+		*/
 	}
 
 	// setup cleaner

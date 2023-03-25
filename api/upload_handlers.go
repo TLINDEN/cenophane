@@ -116,7 +116,7 @@ func UploadPost(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	go db.Insert(id, entry)
 
 	// everything went well so far
-	res := &common.Uploads{Entries: []*common.Upload{entry}}
+	res := &common.Response{Uploads: []*common.Upload{entry}}
 	res.Success = true
 	res.Code = fiber.StatusOK
 	return c.Status(fiber.StatusOK).JSON(res)
@@ -139,10 +139,15 @@ func UploadFetch(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) err
 			"Unable to initialize session store from context: "+err.Error())
 	}
 
-	upload, err := db.Lookup(apicontext, id)
+	response, err := db.Lookup(apicontext, id, common.TypeUpload)
 	if err != nil {
 		// non existent db entry with that id, or other db error, see logs
 		return fiber.NewError(404, "No download with that id could be found!")
+	}
+
+	var upload *common.Upload
+	if len(response.Uploads) > 0 {
+		upload = response.Uploads[0]
 	}
 
 	file := upload.File
@@ -228,7 +233,7 @@ func UploadsList(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// get list
-	uploads, err := db.UploadsList(apicontext, filter)
+	uploads, err := db.UploadsList(apicontext, filter, common.TypeUpload)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"Unable to list uploads: "+err.Error())
@@ -256,19 +261,19 @@ func UploadDescribe(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 			"Unable to initialize session store from context: "+err.Error())
 	}
 
-	uploads, err := db.Get(apicontext, id)
+	response, err := db.Get(apicontext, id, common.TypeUpload)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"No upload with that id could be found!")
 	}
 
-	for _, upload := range uploads.Entries {
+	for _, upload := range response.Uploads {
 		upload.Url = strings.Join([]string{cfg.Url, "download", id, upload.File}, "/")
 	}
 
 	// if we reached this point we can signal success
-	uploads.Success = true
-	uploads.Code = fiber.StatusOK
+	response.Success = true
+	response.Code = fiber.StatusOK
 
-	return c.Status(fiber.StatusOK).JSON(uploads)
+	return c.Status(fiber.StatusOK).JSON(response)
 }

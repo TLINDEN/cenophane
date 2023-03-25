@@ -168,7 +168,7 @@ func HandleResponse(c *cfg.Config, resp *req.Response) error {
 
 func UploadFiles(w io.Writer, c *cfg.Config, args []string) error {
 	// setup url, req.Request, timeout handling etc
-	rq := Setup(c, "/uploads/")
+	rq := Setup(c, "/uploads")
 
 	// collect files to upload from @argv
 	if err := GatherFiles(rq, args); err != nil {
