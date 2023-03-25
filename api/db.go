@@ -130,21 +130,13 @@ func (db *Db) UploadsList(apicontext string, filter string, t int) (*common.Resp
 				if apicontext == entryContext {
 					// unless a filter needed OR no filter specified
 					if (filter != "" && entryContext == filter) || filter == "" {
-						if t == common.TypeUpload {
-							response.Uploads = append(response.Uploads, entry.(*common.Upload))
-						} else {
-							response.Forms = append(response.Forms, entry.(*common.Form))
-						}
+						response.Append(entry)
 					}
 				}
 			} else {
 				// return all, because we operate a public service or current==super
 				if (filter != "" && entryContext == filter) || filter == "" {
-					if t == common.TypeUpload {
-						response.Uploads = append(response.Uploads, entry.(*common.Upload))
-					} else {
-						response.Forms = append(response.Forms, entry.(*common.Form))
-					}
+					response.Append(entry)
 				}
 			}
 
@@ -179,19 +171,15 @@ func (db *Db) Get(apicontext string, id string, t int) (*common.Response, error)
 
 		var entryContext string
 		if t == common.TypeUpload {
-			entryContext = entry.(common.Upload).Context
+			entryContext = entry.(*common.Upload).Context
 		} else {
-			entryContext = entry.(common.Form).Context
+			entryContext = entry.(*common.Form).Context
 		}
 
 		if (apicontext != "" && (db.cfg.Super == apicontext || entryContext == apicontext)) || apicontext == "" {
 			// allowed if no context (public or download)
 			// or if context matches or if context==super
-			if t == common.TypeUpload {
-				response.Uploads = append(response.Uploads, entry.(*common.Upload))
-			} else {
-				response.Forms = append(response.Forms, entry.(*common.Form))
-			}
+			response.Append(entry)
 		}
 
 		return nil

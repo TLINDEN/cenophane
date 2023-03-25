@@ -106,6 +106,24 @@ func (form Form) Marshal() ([]byte, error) {
 }
 
 /*
+   Response methods
+*/
+func (r *Response) Append(entry Dbentry) {
+	switch entry.(type) {
+	case *Upload:
+		r.Uploads = append(r.Uploads, entry.(*Upload))
+	case Upload:
+		r.Uploads = append(r.Uploads, entry.(*Upload))
+	case Form:
+		r.Forms = append(r.Forms, entry.(*Form))
+	case *Form:
+		r.Forms = append(r.Forms, entry.(*Form))
+	default:
+		panic("unknown type!")
+	}
+}
+
+/*
    Extract  context, whatever  kind entry  is,  but we  don't know  in
    advance, only  after unmarshalling.  So try  Upload first,  if that
    fails, try Form.

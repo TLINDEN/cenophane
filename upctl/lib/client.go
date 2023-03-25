@@ -219,7 +219,7 @@ func List(w io.Writer, c *cfg.Config, args []string) error {
 		return err
 	}
 
-	return RespondTable(w, resp)
+	return UploadsRespondTable(w, resp)
 }
 
 func Delete(w io.Writer, c *cfg.Config, args []string) error {
@@ -249,7 +249,7 @@ func Describe(w io.Writer, c *cfg.Config, args []string) error {
 
 	id := args[0] // we describe only 1 object
 
-	rq := Setup(c, "/uploads/"+id+"/")
+	rq := Setup(c, "/uploads/"+id)
 	resp, err := rq.R.Get(rq.Url)
 
 	if err != nil {
