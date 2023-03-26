@@ -111,7 +111,7 @@ func TestUploadFiles(t *testing.T) {
 			name:     "upload-file",
 			apikey:   "token",
 			wantfail: false,
-			route:    "/uploads/",
+			route:    "/uploads",
 			sendcode: 200,
 			sendjson: `{"success": true}`,
 			files:    []string{"../t/t1"}, // pwd is lib/ !
@@ -121,7 +121,7 @@ func TestUploadFiles(t *testing.T) {
 			name:     "upload-dir",
 			apikey:   "token",
 			wantfail: false,
-			route:    "/uploads/",
+			route:    "/uploads",
 			sendcode: 200,
 			sendjson: `{"success": true}`,
 			files:    []string{"../t"}, // pwd is lib/ !
@@ -131,7 +131,7 @@ func TestUploadFiles(t *testing.T) {
 			name:     "upload-catch-nonexistent-file",
 			apikey:   "token",
 			wantfail: true,
-			route:    "/uploads/",
+			route:    "/uploads",
 			sendcode: 200,
 			sendjson: `{"success": false}`,
 			files:    []string{"../t/none"},
@@ -141,7 +141,7 @@ func TestUploadFiles(t *testing.T) {
 			name:     "upload-catch-no-access",
 			apikey:   "token",
 			wantfail: true,
-			route:    "/uploads/",
+			route:    "/uploads",
 			sendcode: 403,
 			sendjson: `{"success": false}`,
 			files:    []string{"../t/t1"},
@@ -151,7 +151,7 @@ func TestUploadFiles(t *testing.T) {
 			name:     "upload-check-output",
 			apikey:   "token",
 			wantfail: false,
-			route:    "/uploads/",
+			route:    "/uploads",
 			sendcode: 200,
 			sendjson: `{"uploads":[
                            {
@@ -266,7 +266,7 @@ func TestDescribe(t *testing.T) {
 			sendjson: listing,
 			files:    []string{"cc2c965a"},
 			method:   "GET",
-			expect:   `Uploaded: 2023-03-21 12:06:54.890501888`,
+			expect:   `Created: 2023-03-21 12:06:54.890501888`,
 		},
 		{
 			name:     "describe-catch-empty-json",
@@ -292,7 +292,7 @@ func TestDescribe(t *testing.T) {
 
 	for _, unit := range tests {
 		var w bytes.Buffer
-		unit.route += unit.files[0] + "/"
+		unit.route += unit.files[0]
 		Intercept(unit)
 		Check(t, unit, &w, Describe(&w, conf, unit.files))
 	}

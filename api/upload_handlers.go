@@ -62,7 +62,7 @@ func UploadPost(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// init upload obj
-	entry := &common.Upload{Id: id, Uploaded: common.Timestamp{Time: time.Now()}}
+	entry := &common.Upload{Id: id, Created: common.Timestamp{Time: time.Now()}}
 
 	// retrieve the API Context name from the session
 	apicontext, err := GetApicontext(c)
@@ -233,7 +233,7 @@ func UploadsList(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// get list
-	uploads, err := db.UploadsList(apicontext, filter, common.TypeUpload)
+	uploads, err := db.List(apicontext, filter, common.TypeUpload)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"Unable to list uploads: "+err.Error())

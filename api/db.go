@@ -102,7 +102,7 @@ func (db *Db) Delete(apicontext string, id string) error {
 	return err
 }
 
-func (db *Db) UploadsList(apicontext string, filter string, t int) (*common.Response, error) {
+func (db *Db) List(apicontext string, filter string, t int) (*common.Response, error) {
 	response := &common.Response{}
 
 	err := db.bolt.View(func(tx *bolt.Tx) error {
@@ -119,12 +119,12 @@ func (db *Db) UploadsList(apicontext string, filter string, t int) (*common.Resp
 
 			var entryContext string
 			if t == common.TypeUpload {
-				entryContext = entry.(common.Upload).Context
+				entryContext = entry.(*common.Upload).Context
 			} else {
-				entryContext = entry.(common.Form).Context
+				entryContext = entry.(*common.Form).Context
 			}
 
-			fmt.Printf("apicontext: %s, filter: %s\n", apicontext, filter)
+			//fmt.Printf("apicontext: %s, filter: %s\n", apicontext, filter)
 			if apicontext != "" && db.cfg.Super != apicontext {
 				// only return the uploads for this context
 				if apicontext == entryContext {
@@ -150,6 +150,7 @@ func (db *Db) UploadsList(apicontext string, filter string, t int) (*common.Resp
 }
 
 // we only return one obj here, but could return more later
+// FIXME: turn the id into a filter and call (Uploads|Forms)List(), same code!
 func (db *Db) Get(apicontext string, id string, t int) (*common.Response, error) {
 	response := &common.Response{}
 

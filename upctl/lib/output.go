@@ -77,11 +77,11 @@ func WriteExtended(w io.Writer, response *common.Response) {
 
 	// we shall only have 1 element, however, if we ever support more, here we go
 	for _, entry := range response.Uploads {
-		expire := prepareExpire(entry.Expire, entry.Uploaded)
+		expire := prepareExpire(entry.Expire, entry.Created)
 		fmt.Fprintf(w, format, "Id", entry.Id)
 		fmt.Fprintf(w, format, "Expire", expire)
 		fmt.Fprintf(w, format, "Context", entry.Context)
-		fmt.Fprintf(w, format, "Uploaded", entry.Uploaded)
+		fmt.Fprintf(w, format, "Created", entry.Created)
 		fmt.Fprintf(w, format, "Filename", entry.File)
 		fmt.Fprintf(w, format, "Url", entry.Url)
 		fmt.Fprintln(w)
@@ -120,11 +120,11 @@ func UploadsRespondTable(w io.Writer, resp *req.Response) error {
 	data := [][]string{}
 	for _, entry := range response.Uploads {
 		data = append(data, []string{
-			entry.Id, entry.Expire, entry.Context, entry.Uploaded.Format("2006-01-02 15:04:05"),
+			entry.Id, entry.Expire, entry.Context, entry.Created.Format("2006-01-02 15:04:05"),
 		})
 	}
 
-	WriteTable(w, []string{"ID", "EXPIRE", "CONTEXT", "UPLOADED"}, data)
+	WriteTable(w, []string{"ID", "EXPIRE", "CONTEXT", "CREATED"}, data)
 
 	return nil
 }

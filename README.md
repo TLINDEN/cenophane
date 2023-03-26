@@ -195,7 +195,7 @@ Upload:
 | expire   | string           | when the upload has to expire, either "asap" or a Duration using numbers and the letters d,h,m,s (days,hours,minutes,seconds), e.g. 2d4h30m |
 | file     | string           | filename after uploading, this is what a consumer gets when downloading it                                                                  |
 | members  | array of strings | list of the original filenames                                                                                                              |
-| uploaded | timestamp        | time of object creation                                                                                                                     |
+| created  | timestamp        | time of object creation                                                                                                                     |
 | context  | string           | the API context the upload has been created under                                                                                           |
 | url      | string           | the download URL                                                                                                                            |
 
