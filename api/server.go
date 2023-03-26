@@ -86,23 +86,21 @@ func Runserver(conf *cfg.Config, args []string) error {
 			return FormCreate(c, conf, db)
 		})
 
-		/*
-			// remove
-			api.Delete("/forms/:id", auth, func(c *fiber.Ctx) error {
-				err := FormDelete(c, conf, db)
-				return SendResponse(c, "", err)
-			})
+		// remove
+		api.Delete("/forms/:id", auth, func(c *fiber.Ctx) error {
+			err := FormDelete(c, conf, db)
+			return SendResponse(c, "", err)
+		})
 
-			// listing
-			api.Get("/forms", auth, func(c *fiber.Ctx) error {
-				return FormsList(c, conf, db)
-			})
+		// listing
+		api.Get("/forms", auth, func(c *fiber.Ctx) error {
+			return FormsList(c, conf, db)
+		})
 
-			// info/describe
-			api.Get("/forms/:id", auth, func(c *fiber.Ctx) error {
-				return FormDescribe(c, conf, db)
-			})
-		*/
+		// info/describe
+		api.Get("/forms/:id", auth, func(c *fiber.Ctx) error {
+			return FormDescribe(c, conf, db)
+		})
 	}
 
 	// public routes
@@ -119,11 +117,10 @@ func Runserver(conf *cfg.Config, args []string) error {
 			return UploadFetch(c, conf, db, shallExpire)
 		})
 
-		/*
-			router.Get("/form/:id", func(c *fiber.Ctx) error {
-				return FormFetch(c, conf, db, shallExpire)
-			})
-		*/
+		router.Get("/form/:id", func(c *fiber.Ctx) error {
+			return FormPage(c, conf, db, shallExpire)
+		})
+
 	}
 
 	// setup cleaner

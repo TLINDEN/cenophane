@@ -34,6 +34,7 @@ type Apicontext struct {
 
 // holds the whole configs, filled by commandline flags, env and config file
 type Config struct {
+	// Flags+config file settings
 	ApiPrefix  string `koanf:"apiprefix"` // path prefix
 	Debug      bool   `koanf:"debug"`
 	Listen     string `koanf:"listen"`     // [host]:port
@@ -42,6 +43,7 @@ type Config struct {
 	DbFile     string `koanf:"dbfile"`
 	Super      string `koanf:"super"`     // the apicontext which has all permissions
 	Frontpage  string `koanf:"frontpage"` // a html file
+	Formpage   string `koanf:"formpage"`  // a html file
 
 	// fiber settings, see:
 	// https://docs.gofiber.io/api/fiber/#config

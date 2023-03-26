@@ -35,7 +35,8 @@ func prepareExpire(expire string, start common.Timestamp) string {
 	case "asap":
 		return "On first access"
 	default:
-		return time.Unix(start.Unix()+int64(common.Duration2int(expire)), 0).Format("2006-01-02 15:04:05")
+		return time.Unix(start.Unix()+int64(common.Duration2int(expire)), 0).
+			Format("2006-01-02 15:04:05")
 	}
 
 	return ""
@@ -87,7 +88,16 @@ func WriteExtended(w io.Writer, response *common.Response) {
 		fmt.Fprintln(w)
 	}
 
-	// FIXME: add response.Forms loop here
+	for _, entry := range response.Forms {
+		expire := prepareExpire(entry.Expire, entry.Created)
+		fmt.Fprintf(w, format, "Id", entry.Id)
+		fmt.Fprintf(w, format, "Expire", expire)
+		fmt.Fprintf(w, format, "Context", entry.Context)
+		fmt.Fprintf(w, format, "Created", entry.Created)
+		fmt.Fprintf(w, format, "Description", entry.Description)
+		fmt.Fprintf(w, format, "Url", entry.Url)
+		fmt.Fprintln(w)
+	}
 }
 
 // extract an common.Uploads{} struct from json response

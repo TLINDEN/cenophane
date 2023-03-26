@@ -24,6 +24,8 @@ import (
 	"github.com/tlinden/cenophane/cfg"
 	"github.com/tlinden/cenophane/common"
 
+	"bytes"
+	"html/template"
 	"strings"
 	"time"
 )
@@ -80,60 +82,8 @@ func FormCreate(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	return c.Status(fiber.StatusOK).JSON(res)
 }
 
-/*
-func FormFetch(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) error {
-	// deliver  a file and delete  it if expire is set to asap
-
-	// we ignore c.Params("file"), cause  it may be malign. Also we've
-	// got it in the db anyway
-	id, err := common.Untaint(c.Params("id"), cfg.RegKey)
-	if err != nil {
-		return fiber.NewError(403, "Invalid id provided!")
-	}
-
-	// retrieve the API Context name from the session
-	apicontext, err := GetApicontext(c)
-	if err != nil {
-		return JsonStatus(c, fiber.StatusInternalServerError,
-			"Unable to initialize session store from context: "+err.Error())
-	}
-
-	upload, err := db.Lookup(apicontext, id)
-	if err != nil {
-		// non existent db entry with that id, or other db error, see logs
-		return fiber.NewError(404, "No download with that id could be found!")
-	}
-
-	file := upload.File
-	filename := filepath.Join(cfg.StorageDir, id, file)
-
-	if _, err := os.Stat(filename); err != nil {
-		// db entry is there, but file isn't (anymore?)
-		go db.Delete(apicontext, id)
-		return fiber.NewError(404, "No download with that id could be found!")
-	}
-
-	// finally put the file to the client
-	err = c.Download(filename, file)
-
-	if len(shallExpire) > 0 {
-		if shallExpire[0] == true {
-			go func() {
-				// check if we need to delete the file now and do it in the background
-				if upload.Expire == "asap" {
-					cleanup(filepath.Join(cfg.StorageDir, id))
-					db.Delete(apicontext, id)
-				}
-			}()
-		}
-	}
-
-	return err
-}
-
-// delete file, id dir and db entry
+// delete form
 func FormDelete(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
-
 	id, err := common.Untaint(c.Params("id"), cfg.RegKey)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
@@ -156,10 +106,8 @@ func FormDelete(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	if err != nil {
 		// non existent db entry with that id, or other db error, see logs
 		return JsonStatus(c, fiber.StatusForbidden,
-			"No upload with that id could be found!")
+			"No form with that id could be found!")
 	}
-
-	cleanup(filepath.Join(cfg.StorageDir, id))
 
 	return nil
 }
@@ -187,20 +135,20 @@ func FormsList(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// get list
-	uploads, err := db.FormsList(apicontext, filter)
+	response, err := db.List(apicontext, filter, common.TypeForm)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
-			"Unable to list uploads: "+err.Error())
+			"Unable to list forms: "+err.Error())
 	}
 
 	// if we reached this point we can signal success
-	uploads.Success = true
-	uploads.Code = fiber.StatusOK
+	response.Success = true
+	response.Code = fiber.StatusOK
 
-	return c.Status(fiber.StatusOK).JSON(uploads)
+	return c.Status(fiber.StatusOK).JSON(response)
 }
 
-// returns just one upload obj + error code, no post processing by server
+// returns just one form obj + error code
 func FormDescribe(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	id, err := common.Untaint(c.Params("id"), cfg.RegKey)
 	if err != nil {
@@ -215,20 +163,55 @@ func FormDescribe(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 			"Unable to initialize session store from context: "+err.Error())
 	}
 
-	uploads, err := db.Get(apicontext, id)
+	response, err := db.Get(apicontext, id, common.TypeForm)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
-			"No upload with that id could be found!")
+			"No form with that id could be found!")
 	}
 
-	for _, upload := range uploads.Entries {
-		upload.Url = strings.Join([]string{cfg.Url, "download", id, upload.File}, "/")
+	for _, form := range response.Forms {
+		form.Url = strings.Join([]string{cfg.Url, "form", id}, "/")
 	}
 
 	// if we reached this point we can signal success
-	uploads.Success = true
-	uploads.Code = fiber.StatusOK
+	response.Success = true
+	response.Code = fiber.StatusOK
 
-	return c.Status(fiber.StatusOK).JSON(uploads)
+	return c.Status(fiber.StatusOK).JSON(response)
 }
+
+/*
+   Render the upload  html form. Template given  by --formpage, stored
+   as  text  in  cfg.Formpage.  It will  be  rendered  using  golang's
+   template engine,  data to  be filled  in is  the form  matching the
+   given id.
 */
+func FormPage(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallexpire bool) error {
+	id, err := common.Untaint(c.Params("id"), cfg.RegKey)
+	if err != nil {
+		return c.Status(fiber.StatusForbidden).SendString("Invalid id provided!")
+	}
+
+	apicontext, err := GetApicontext(c)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("Unable to initialize session store from context:" + err.Error())
+	}
+
+	response, err := db.Get(apicontext, id, common.TypeForm)
+	if err != nil || len(response.Forms) == 0 {
+		return c.Status(fiber.StatusForbidden).SendString("No form with that id could be found!")
+	}
+
+	t := template.New("form")
+	if t, err = t.Parse(cfg.Formpage); err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("Unable to load form template: " + err.Error())
+	}
+
+	var out bytes.Buffer
+	if err := t.Execute(&out, response.Forms[0]); err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString("Unable to render form template: " + err.Error())
+	}
+
+	c.Set("Content-type", "text/html; charset=utf-8")
+	return c.Status(fiber.StatusOK).SendString(out.String())
+}

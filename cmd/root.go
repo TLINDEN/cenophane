@@ -65,6 +65,7 @@ func Execute() error {
 	f.StringVarP(&conf.Super, "super", "", "", "The API Context which has permissions on all contexts")
 	f.StringVarP(&conf.Frontpage, "frontpage", "", "welcome to upload api, use /api enpoint!",
 		"Content or filename to be displayed on / in case someone visits")
+	f.StringVarP(&conf.Formpage, "formpage", "", "", "Content or filename to be displayed for forms (must be a go template)")
 
 	// server settings
 	f.BoolVarP(&conf.V4only, "ipv4", "4", false, "Only listen on ipv4")
@@ -139,6 +140,20 @@ func Execute() error {
 
 			// replace the filename
 			conf.Frontpage = string(content)
+		}
+	}
+
+	// Formpage?
+	if conf.Formpage != "" {
+		if _, err := os.Stat(conf.Formpage); err == nil {
+			// it's a filename, try to use it
+			content, err := ioutil.ReadFile(conf.Formpage)
+			if err != nil {
+				return errors.New("error loading config: " + err.Error())
+			}
+
+			// replace the filename
+			conf.Formpage = string(content)
 		}
 	}
 

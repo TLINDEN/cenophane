@@ -320,3 +320,29 @@ func Download(w io.Writer, c *cfg.Config, args []string) error {
 
 	return nil
 }
+
+/**** Forms stuff ****/
+func CreateForm(w io.Writer, c *cfg.Config) error {
+	// setup url, req.Request, timeout handling etc
+	rq := Setup(c, "/forms")
+
+	// actual post w/ settings
+	resp, err := rq.R.
+		SetFormData(map[string]string{
+			"expire":      c.Expire,
+			"description": c.Description,
+		}).
+		Post(rq.Url)
+
+	if err != nil {
+		return err
+	}
+
+	if err := HandleResponse(c, resp); err != nil {
+		return err
+	}
+
+	return RespondExtended(w, resp)
+
+	return nil
+}
