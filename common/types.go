@@ -66,6 +66,7 @@ type Form struct {
 	Created     Timestamp `json:"uploaded"`
 	Context     string    `json:"context"`
 	Url         string    `json:"url"`
+	Notify      string    `json:"notify"`
 }
 
 const (
