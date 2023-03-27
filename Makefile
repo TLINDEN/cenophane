@@ -29,7 +29,7 @@ VERSION  := $(if $(filter $(BRANCH), development),$(version)-$(BRANCH)-$(COMMIT)
 HAVE_POD := $(shell pod2text -h 2>/dev/null)
 DAEMON   := cenod
 
-all: buildlocal buildlocalctl
+all: cmd/formtemplate.go buildlocal buildlocalctl
 
 buildlocalctl:
 	make -C upctl
@@ -80,3 +80,10 @@ show-versions: buildlocal
 
 goupdate:
 	go get -t -u=patch ./...
+
+cmd/%.go: templates/%.tpl
+	echo "package cmd" > cmd/$*.go
+	echo >> cmd/$*.go
+	echo "const formtemplate = \`" >> cmd/$*.go
+	cat templates/$*.tpl >> cmd/$*.go
+	echo "\`" >> cmd/$*.go

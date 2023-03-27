@@ -65,7 +65,7 @@ func UploadPost(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	entry := &common.Upload{Id: id, Created: common.Timestamp{Time: time.Now()}}
 
 	// retrieve the API Context name from the session
-	apicontext, err := GetApicontext(c)
+	apicontext, err := SessionGetApicontext(c)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusInternalServerError,
 			"Unable to initialize session store from context: "+err.Error())
@@ -119,6 +119,24 @@ func UploadPost(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	res := &common.Response{Uploads: []*common.Upload{entry}}
 	res.Success = true
 	res.Code = fiber.StatusOK
+
+	// ok, check  if we need to remove  a form, if so we do  it in the
+	// background.  delete error  doesn't lead  to upload  failure, we
+	// only log it.
+	formid, _ := SessionGetFormId(c)
+	if formid != "" {
+		go func() {
+			r, err := db.Get(apicontext, formid, common.TypeForm)
+			if err == nil {
+				if len(r.Forms) == 1 {
+					if r.Forms[0].Expire == "asap" {
+						db.Delete(apicontext, formid)
+					}
+				}
+			}
+		}()
+	}
+
 	return c.Status(fiber.StatusOK).JSON(res)
 }
 
@@ -133,7 +151,7 @@ func UploadFetch(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) err
 	}
 
 	// retrieve the API Context name from the session
-	apicontext, err := GetApicontext(c)
+	apicontext, err := SessionGetApicontext(c)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusInternalServerError,
 			"Unable to initialize session store from context: "+err.Error())
@@ -192,7 +210,7 @@ func UploadDelete(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// retrieve the API Context name from the session
-	apicontext, err := GetApicontext(c)
+	apicontext, err := SessionGetApicontext(c)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusInternalServerError,
 			"Unable to initialize session store from context: "+err.Error())
@@ -226,7 +244,7 @@ func UploadsList(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// retrieve the API Context name from the session
-	apicontext, err := GetApicontext(c)
+	apicontext, err := SessionGetApicontext(c)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusInternalServerError,
 			"Unable to initialize session store from context: "+err.Error())
@@ -255,7 +273,7 @@ func UploadDescribe(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// retrieve the API Context name from the session
-	apicontext, err := GetApicontext(c)
+	apicontext, err := SessionGetApicontext(c)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusInternalServerError,
 			"Unable to initialize session store from context: "+err.Error())

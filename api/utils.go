@@ -55,7 +55,7 @@ func Ts() string {
 
    If there's no apicontext in the session, assume unauth user, return ""
 */
-func GetApicontext(c *fiber.Ctx) (string, error) {
+func SessionGetApicontext(c *fiber.Ctx) (string, error) {
 	sess, err := Sessionstore.Get(c)
 	if err != nil {
 		return "", fmt.Errorf("Unable to initialize session store from context: " + err.Error())
@@ -64,6 +64,25 @@ func GetApicontext(c *fiber.Ctx) (string, error) {
 	apicontext := sess.Get("apicontext")
 	if apicontext != nil {
 		return apicontext.(string), nil
+	}
+
+	return "", nil
+}
+
+/*
+   Retrieve the formid  (aka onetime api key) from the  session. It is
+   configured if an upload request has been successfully authenticated
+   using a onetime key.
+*/
+func SessionGetFormId(c *fiber.Ctx) (string, error) {
+	sess, err := Sessionstore.Get(c)
+	if err != nil {
+		return "", fmt.Errorf("Unable to initialize session store from context: " + err.Error())
+	}
+
+	formid := sess.Get("formid")
+	if formid != nil {
+		return formid.(string), nil
 	}
 
 	return "", nil

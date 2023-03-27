@@ -39,7 +39,7 @@ func FormCreate(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	entry := &common.Form{Id: id, Created: common.Timestamp{Time: time.Now()}}
 
 	// retrieve the API Context name from the session
-	apicontext, err := GetApicontext(c)
+	apicontext, err := SessionGetApicontext(c)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusInternalServerError,
 			"Unable to initialize session store from context: "+err.Error())
@@ -96,7 +96,7 @@ func FormDelete(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// retrieve the API Context name from the session
-	apicontext, err := GetApicontext(c)
+	apicontext, err := SessionGetApicontext(c)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusInternalServerError,
 			"Unable to initialize session store from context: "+err.Error())
@@ -128,7 +128,7 @@ func FormsList(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// retrieve the API Context name from the session
-	apicontext, err := GetApicontext(c)
+	apicontext, err := SessionGetApicontext(c)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusInternalServerError,
 			"Unable to initialize session store from context: "+err.Error())
@@ -157,7 +157,7 @@ func FormDescribe(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// retrieve the API Context name from the session
-	apicontext, err := GetApicontext(c)
+	apicontext, err := SessionGetApicontext(c)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusInternalServerError,
 			"Unable to initialize session store from context: "+err.Error())
@@ -192,7 +192,7 @@ func FormPage(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallexpire bool) error {
 		return c.Status(fiber.StatusForbidden).SendString("Invalid id provided!")
 	}
 
-	apicontext, err := GetApicontext(c)
+	apicontext, err := SessionGetApicontext(c)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Unable to initialize session store from context:" + err.Error())
 	}
@@ -206,6 +206,10 @@ func FormPage(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallexpire bool) error {
 	if t, err = t.Parse(cfg.Formpage); err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Unable to load form template: " + err.Error())
 	}
+
+	// prepare upload url
+	uploadurl := strings.Join([]string{cfg.ApiPrefix + ApiVersion, "uploads"}, "/")
+	response.Forms[0].Url = uploadurl
 
 	var out bytes.Buffer
 	if err := t.Execute(&out, response.Forms[0]); err != nil {

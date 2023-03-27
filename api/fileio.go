@@ -83,7 +83,7 @@ func ProcessFormFiles(cfg *cfg.Config, members []string, id string) (string, str
 			return "", "", err
 		}
 
-		returnUrl = strings.Join([]string{cfg.Url + cfg.ApiPrefix + ApiVersion, "file", id, zipfile}, "/")
+		returnUrl = strings.Join([]string{cfg.Url, "download", id, zipfile}, "/")
 		Filename = zipfile
 
 		// clean up after us

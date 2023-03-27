@@ -155,6 +155,9 @@ func Execute() error {
 			// replace the filename
 			conf.Formpage = string(content)
 		}
+	} else {
+		// use builtin default
+		conf.Formpage = formtemplate
 	}
 
 	switch {

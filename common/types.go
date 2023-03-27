@@ -55,6 +55,11 @@ type Response struct {
 }
 
 type Form struct {
+	// Note the dual use of the Id: it will be used as onetime api key
+	// from generated upload forms and  stored in the session store so
+	// that the upload handler is able to check if the form object has
+	// to be deleted immediately (if  its expire field has been set to
+	// asap)
 	Id          string    `json:"id"`
 	Expire      string    `json:"expire"`
 	Description string    `json:"description"`

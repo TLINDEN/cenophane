@@ -47,7 +47,7 @@ func Runserver(conf *cfg.Config, args []string) error {
 	defer db.Close()
 
 	// setup authenticated endpoints
-	auth := SetupAuthStore(conf)
+	auth := SetupAuthStore(conf, db)
 
 	// setup api server
 	router := SetupServer(conf)
@@ -135,12 +135,23 @@ func Runserver(conf *cfg.Config, args []string) error {
 	return router.Listen(conf.Listen)
 }
 
-func SetupAuthStore(conf *cfg.Config) func(*fiber.Ctx) error {
-	AuthSetEndpoints(conf.ApiPrefix, ApiVersion, []string{"/file"})
+func SetupAuthStore(conf *cfg.Config, db *Db) func(*fiber.Ctx) error {
 	AuthSetApikeys(conf.Apicontexts)
 
 	return keyauth.New(keyauth.Config{
-		Validator:    AuthValidateAPIKey,
+		Validator: func(c *fiber.Ctx, key string) (bool, error) {
+			// we use a wrapper closure to be able to forward the db object
+			formuser, err := AuthValidateOnetimeKey(c, key, db)
+
+			// incoming apicontext matches a form id, accept it
+			if err == nil {
+				Log("Incoming API Context equals formuser: %t, id: %s", formuser, key)
+				return formuser, err
+			}
+
+			// nope, we need to check against regular configured apicontexts
+			return AuthValidateAPIKey(c, key)
+		},
 		ErrorHandler: AuthErrHandler,
 	})
 }
