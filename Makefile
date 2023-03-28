@@ -81,9 +81,9 @@ show-versions: buildlocal
 goupdate:
 	go get -t -u=patch ./...
 
-cmd/%.go: templates/%.tpl
+cmd/%.go: templates/%.html
 	echo "package cmd" > cmd/$*.go
 	echo >> cmd/$*.go
 	echo "const formtemplate = \`" >> cmd/$*.go
-	cat templates/$*.tpl >> cmd/$*.go
+	cat templates/$*.html >> cmd/$*.go
 	echo "\`" >> cmd/$*.go
