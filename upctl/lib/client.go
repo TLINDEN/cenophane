@@ -50,7 +50,7 @@ type ListParams struct {
 	Apicontext string `json:"apicontext"`
 }
 
-const Maxwidth = 10
+const Maxwidth = 12
 
 /*
    Create a new request object for outgoing queries
@@ -142,13 +142,13 @@ func HandleResponse(c *cfg.Config, resp *req.Response) error {
 		fmt.Println(trace)
 	}
 
-	if !resp.IsSuccessState() {
-		return fmt.Errorf("bad response: %s", resp.Status)
-	}
-
 	if err := json.Unmarshal([]byte(resp.String()), &r); err != nil {
 		// text output!
 		r.Message = resp.String()
+	}
+
+	if !resp.IsSuccessState() {
+		return fmt.Errorf("bad response: %s (%s)", resp.Status, r.Message)
 	}
 
 	if !r.Success {
@@ -331,6 +331,7 @@ func CreateForm(w io.Writer, c *cfg.Config) error {
 		SetFormData(map[string]string{
 			"expire":      c.Expire,
 			"description": c.Description,
+			"notify":      c.Notify,
 		}).
 		Post(rq.Url)
 

@@ -24,6 +24,7 @@ import (
 	"github.com/tlinden/cenophane/cfg"
 	"github.com/tlinden/cenophane/common"
 
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -122,7 +123,7 @@ func UploadPost(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 
 	// ok, check  if we need to remove  a form, if so we do  it in the
 	// background.  delete error  doesn't lead  to upload  failure, we
-	// only log it.
+	// only log it. same applies to mail notification.
 	formid, _ := SessionGetFormId(c)
 	if formid != "" {
 		go func() {
@@ -131,6 +132,16 @@ func UploadPost(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 				if len(r.Forms) == 1 {
 					if r.Forms[0].Expire == "asap" {
 						db.Delete(apicontext, formid)
+					}
+
+					// email notification to form creator
+					if r.Forms[0].Notify != "" {
+						body := fmt.Sprintf("Upload is available under: %s", returnUrl)
+						subject := fmt.Sprintf("Upload form %s has been used", formid)
+						err := Sendmail(cfg, r.Forms[0].Notify, body, subject)
+						if err != nil {
+							Log("Failed to send mail: %s", err.Error())
+						}
 					}
 				}
 			}

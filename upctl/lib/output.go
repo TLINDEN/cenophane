@@ -95,6 +95,7 @@ func WriteExtended(w io.Writer, response *common.Response) {
 		fmt.Fprintf(w, format, "Context", entry.Context)
 		fmt.Fprintf(w, format, "Created", entry.Created)
 		fmt.Fprintf(w, format, "Description", entry.Description)
+		fmt.Fprintf(w, format, "Notify", entry.Notify)
 		fmt.Fprintf(w, format, "Url", entry.Url)
 		fmt.Fprintln(w)
 	}

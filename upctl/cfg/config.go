@@ -46,6 +46,7 @@ type Config struct {
 
 	// required for forms
 	Description string
+	Notify      string
 }
 
 func Getversion() string {

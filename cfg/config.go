@@ -32,6 +32,13 @@ type Apicontext struct {
 	Key     string `koanf:"key"`
 }
 
+type Mailsettings struct {
+	Server   string `koanf:"server"`
+	Port     string `koanf:"port"`
+	From     string `koanf:"from"`
+	Password string `koanf:"password"`
+}
+
 // holds the whole configs, filled by commandline flags, env and config file
 type Config struct {
 	// Flags+config file settings
@@ -57,10 +64,14 @@ type Config struct {
 	// only settable via config
 	Apicontexts []Apicontext `koanf:"apicontext"`
 
+	// smtp settings
+	Mail Mailsettings `koanf:mail`
+
 	// Internals only
 	RegNormalizedFilename *regexp.Regexp
 	RegDuration           *regexp.Regexp
 	RegKey                *regexp.Regexp
+	RegEmail              *regexp.Regexp
 	CleanInterval         time.Duration
 	DefaultExpire         int
 }
@@ -107,6 +118,8 @@ func (c *Config) ApplyDefaults() {
 	c.RegNormalizedFilename = regexp.MustCompile(`[^\w\d\-_\.]`)
 	c.RegDuration = regexp.MustCompile(`[^dhms0-9]`)
 	c.RegKey = regexp.MustCompile(`[^a-zA-Z0-9\-]`)
+	c.RegEmail = regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
+	c.RegEmail = regexp.MustCompile(`[^a-z0-9._%+\-@0-9]`)
 
 	c.CleanInterval = 10 * time.Second
 	c.DefaultExpire = 30 * 86400 // 1 month

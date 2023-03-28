@@ -12,33 +12,50 @@ const formtemplate = `
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>File upload form</title>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha2/dist/css/bootstrap.min.css"
+          rel="stylesheet" integrity="sha384-aFq/bzH65dt+w6FI2ooMVUpc+21e0SRygnTpmBvdBgSdnuTN7QbdgL+OapgHtvPp" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
   </head>
   <body>
+    <div class="container">
     <h4>Upload form {{ .Id }}</h4>
-    <!-- Status message -->
+    <!-- Response -->
     <div class="statusMsg"></div>
 
     <!-- File upload form -->
     <div class="col-lg-12">
-      <form id="fupForm" enctype="multipart/form-data" action="/v1/uploads" method="POST">
-        <div class="form-group">
-          <label for="expire">Expire</label>
-          <input type="expire" class="form-control" id="expire" name="expire" placeholder="Enter expire"/>
+      <form id="UploadForm" enctype="multipart/form-data" action="/v1/uploads" method="POST">
+        <div class="mb-3 row">
+          <p>
+            Use this form to upload one or more files. The creator of the form will automatically get notified.
+          </p>
         </div>
-        <div class="form-group">
-          <label for="file">Files</label>
-          <input type="file" class="form-control" id="file" name="uploads[]" multiple />
+        <div class="mb-3 row">
+          <label for="file" class="col-sm-2 col-form-label">Select</label>
+          <div class="col-sm-10">
+            <input type="file" class="form-control" id="file" name="uploads[]" multiple
+                   />
+          </div>
         </div>
+
+        <div class="mb-3 row">
+          <label for="display" class="col-sm-2 col-form-label">Selected Files</label>
+          <div class="col-sm-10">
+            <!-- <input type="textara" class="form-control" id="upload-file-info" readonly>-->
+            <div id="upload-file-info"></div>
+          </div>
+        </div>
+        
         <input type="submit" name="submit" class="btn btn-success submitBtn" value="Upload"/>
       </form>
     </div>
-
-
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha2/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-qKXV1j0HvMUeCBQ+QVp7JcfGl760yU08IQ+GpUo5hlbpg51QRiuqHAJz8+BrxE/N" crossorigin="anonymous"></script>
     <script>
      $(document).ready(function(){
        // Submit form data via Ajax
-       $("#fupForm").on('submit', function(e){
+       $("#UploadForm").on('submit', function(e){
          e.preventDefault();
          $.ajax({
            type: 'POST',
@@ -50,26 +67,34 @@ const formtemplate = `
            processData:false,
            beforeSend: function(xhr){
                $('.submitBtn').attr("disabled","disabled");
-               $('#fupForm').css("opacity",".5");
+               $('#UploadForm').css("opacity",".5");
                xhr.setRequestHeader('Authorization', 'Bearer {{.Id}}');
            },
            success: function(response){
              $('.statusMsg').html('');
              if(response.success){
-                 $('#fupForm')[0].reset();
-                 $('.statusMsg').html('<p class="alert alert-success">Your upload is available at <a href="'
-                                      +response.uploads[0].url+'">here</a> for download</p>');
-                 $('#fupForm').hide();
+                 $('#UploadForm')[0].reset();
+                 $('.statusMsg').html('<p class="alert alert-success">Your upload is available at <code>'
+                                      +response.uploads[0].url+'</code> for download</p>');
+                 $('#UploadForm').hide();
              }else{
                $('.statusMsg').html('<p class="alert alert-danger">'+response.message+'</p>');
              }
-             $('#fupForm').css("opacity","");
+             $('#UploadForm').css("opacity","");
              $(".submitBtn").removeAttr("disabled");
            }
          });
        });
+
+       $("#file").on('change', function() {
+         $("#upload-file-info").empty();
+         for (var i = 0; i < $(this).get(0).files.length; ++i) {
+           $("#upload-file-info").append('<i class="bi-check-lg"></i> ' + $(this).get(0).files[i].name + '<br>');
+         }
+       });
      });
     </script>
+
   </body>
 </html>
 

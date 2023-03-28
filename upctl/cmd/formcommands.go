@@ -64,7 +64,7 @@ func FormCreateCommand(conf *cfg.Config) *cobra.Command {
 	// options
 	formCreateCmd.PersistentFlags().StringVarP(&conf.Expire, "expire", "e", "", "Expire setting: asap or duration (accepted shortcuts: dmh)")
 	formCreateCmd.PersistentFlags().StringVarP(&conf.Description, "description", "D", "", "Description of the form")
-	formCreateCmd.PersistentFlags().StringVarP(&conf.Description, "notify", "n", "", "Email address to get notified when consumer has uploaded files")
+	formCreateCmd.PersistentFlags().StringVarP(&conf.Notify, "notify", "n", "", "Email address to get notified when consumer has uploaded files")
 
 	formCreateCmd.Aliases = append(formCreateCmd.Aliases, "add")
 	formCreateCmd.Aliases = append(formCreateCmd.Aliases, "+")

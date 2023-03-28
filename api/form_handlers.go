@@ -59,9 +59,18 @@ func FormCreate(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 		ex, err := common.Untaint(formdata.Expire, cfg.RegDuration) // duration or asap allowed
 		if err != nil {
 			return JsonStatus(c, fiber.StatusForbidden,
-				"Invalid data: "+err.Error())
+				"Invalid expire data: "+err.Error())
 		}
 		entry.Expire = ex
+	}
+
+	if len(formdata.Notify) != 0 {
+		nt, err := common.Untaint(formdata.Notify, cfg.RegEmail)
+		if err != nil {
+			return JsonStatus(c, fiber.StatusForbidden,
+				"Invalid email address: "+err.Error())
+		}
+		entry.Notify = nt
 	}
 
 	// get url [and zip if there are multiple files]

@@ -17,3 +17,10 @@ apicontext = [
 
 # this is the root context with all permissions
 super = "root"
+
+mail = {
+  server = "localhost"
+  port = "25"
+  from = "root@localhost"
+  password = ""
+}
