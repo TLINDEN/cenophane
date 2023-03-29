@@ -1,3 +1,7 @@
+[![Actions](https://github.com/tlinden/ephemerup/actions/workflows/ci.yaml/badge.svg)](https://github.com/tlinden/ephemerup/actions)
+[![License](https://img.shields.io/badge/license-GPL-blue.svg)](https://github.com/tlinden/ephemerup/blob/master/LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/tlinden/ephemerup)](https://goreportcard.com/report/github.com/tlinden/ephemerup)
+
 # ephemerup
 Simple standalone file upload server with expiration and commandline client.
 
