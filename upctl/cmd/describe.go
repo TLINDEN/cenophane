@@ -19,8 +19,8 @@ package cmd
 import (
 	"errors"
 	"github.com/spf13/cobra"
-	"github.com/tlinden/ephemerup/upctl/cfg"
-	"github.com/tlinden/ephemerup/upctl/lib"
+	"github.com/tlinden/cenophane/upctl/cfg"
+	"github.com/tlinden/cenophane/upctl/lib"
 )
 
 func DescribeCommand(conf *cfg.Config) *cobra.Command {

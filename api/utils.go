@@ -20,8 +20,8 @@ package api
 import (
 	"fmt"
 	"github.com/gofiber/fiber/v2"
-	"github.com/tlinden/ephemerup/cfg"
-	"github.com/tlinden/ephemerup/common"
+	"github.com/tlinden/cenophane/cfg"
+	"github.com/tlinden/cenophane/common"
 	"time"
 )
 

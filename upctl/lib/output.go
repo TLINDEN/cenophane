@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"github.com/imroc/req/v3"
 	"github.com/olekukonko/tablewriter"
-	"github.com/tlinden/ephemerup/common"
+	"github.com/tlinden/cenophane/common"
 	"os"
 	"time"
 )

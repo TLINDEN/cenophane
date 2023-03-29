@@ -1,4 +1,4 @@
-module github.com/tlinden/ephemerup/upctl
+module github.com/tlinden/cenophane/upctl
 
 go 1.18
 
@@ -10,7 +10,7 @@ require (
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.15.0
-	github.com/tlinden/ephemerup/common v0.0.0-00010101000000-000000000000
+	github.com/tlinden/cenophane/common v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -50,4 +50,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/tlinden/ephemerup/common => ../common
+replace github.com/tlinden/cenophane/common => ../common

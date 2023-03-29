@@ -1,4 +1,4 @@
-module github.com/tlinden/ephemerup
+module github.com/tlinden/cenophane
 
 go 1.18
 
@@ -13,7 +13,7 @@ require (
 	github.com/knadh/koanf/providers/posflag v0.1.0
 	github.com/knadh/koanf/v2 v2.0.0
 	github.com/spf13/pflag v1.0.5
-	github.com/tlinden/ephemerup/common v0.0.0-00010101000000-000000000000
+	github.com/tlinden/cenophane/common v0.0.0-00010101000000-000000000000
 	go.etcd.io/bbolt v1.3.7
 )
 
@@ -40,4 +40,4 @@ require (
 	golang.org/x/sys v0.4.0 // indirect
 )
 
-replace github.com/tlinden/ephemerup/common => ./common
+replace github.com/tlinden/cenophane/common => ./common
