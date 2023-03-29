@@ -43,6 +43,10 @@ type Config struct {
 
 	// required to intercept requests using httpmock in tests
 	Mock bool
+
+	// required for forms
+	Description string
+	Notify      string
 }
 
 func Getversion() string {

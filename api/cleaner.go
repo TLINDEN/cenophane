@@ -21,8 +21,8 @@ import (
 	"fmt"
 	//"github.com/alecthomas/repr"
 	"encoding/json"
-	"github.com/tlinden/cenophane/cfg"
-	"github.com/tlinden/cenophane/common"
+	"github.com/tlinden/ephemerup/cfg"
+	"github.com/tlinden/ephemerup/common"
 	bolt "go.etcd.io/bbolt"
 	"path/filepath"
 	"time"
@@ -42,7 +42,7 @@ func DeleteExpiredUploads(conf *cfg.Config, db *Db) error {
 				return fmt.Errorf("unable to unmarshal json: %s", err)
 			}
 
-			if IsExpired(conf, upload.Uploaded.Time, upload.Expire) {
+			if IsExpired(conf, upload.Created.Time, upload.Expire) {
 				if err := bucket.Delete([]byte(id)); err != nil {
 					return nil
 				}

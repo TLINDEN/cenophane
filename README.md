@@ -1,9 +1,9 @@
-# Cenophane
+# ephemerup
 Simple standalone file upload server with expiration and commandline client.
 
 ## Introduction
 
-**Cenophane** is a simple standalone  file server where every uploaded
+**ephemerup** is a simple standalone  file server where every uploaded
 file expires  sooner or later. The  server provides a RESTful  API and
 can be used easily with the commandline client `upctl`.
 
@@ -13,7 +13,7 @@ important enough to  keep them around. Think of  this szenario: you're
 working for  the network departement  and there's a problem  with your
 routing. Tech support  asks you to create a network  trace and send it
 to  them. But  you  can't because  the  trace file  is  too large  and
-sensitive to  be sent by email.  This is where **Cenophane**  comes to
+sensitive to  be sent by email.  This is where **ephemerup**  comes to
 the rescue.
 
 You upload the  file, send the download  url to the other  party and -
@@ -21,11 +21,11 @@ assuming you've utilized  the defaults - when they download  it, it is
 being deleted  immediately from the  server. But  you can also  set an
 expire time, say 5 days or something like that.
 
-The  download urls  generated  by **Cenophane**  consist  of a  unique
+The  download urls  generated  by **ephemerup**  consist  of a  unique
 onetime  hash, so  they  are somewhat  confident.  However, if  you're
 uploading really sensitive data, you better encrypt it.
 
-**Cenophane** also  supports something we  call an API  Context. There
+**ephemerup** also  supports something we  call an API  Context. There
 can be many such API contexts.  Each of these has an associated token,
 which  has  to be  used  by  legitimate  clients to  authenticate  and
 authorize. A user  can only manage uploads within  that context. Think
@@ -60,17 +60,17 @@ releases  available yet. You'll  need  a go  build  environment. Just  run
 There's a `Dockerfile` available for the server so you can build and run it using docker:
 ```
 make buildimage
-docker-compose run cenophane
+docker-compose run ephemerup
 ```
 Then use the client to test it.
 
 ## Server Usage
 
 ```
-cenod -h
+ephemerupd -h
       --apikeys strings     Api key[s] to allow access
   -a, --apiprefix string    API endpoint path (default "/api")
-  -n, --appname string      App name to say hi as (default "cenod v0.0.1")
+  -n, --appname string      App name to say hi as (default "ephemerupd v0.0.1")
   -b, --bodylimit int       Max allowed upload size in bytes (default 10250000000)
   -c, --config string       custom config file
   -D, --dbfile string       Bold database file to use (default "/tmp/uploads.db")
@@ -86,23 +86,23 @@ cenod -h
   -v, --version             Print program version
 ```
 
-All flags can be set using environment variables, prefix the flag with `CENOD_` and uppercase it, eg: 
+All flags can be set using environment variables, prefix the flag with `EPHEMERUPD_` and uppercase it, eg: 
 ```
-CENOD_LISTEN=:8080
+EPHEMERUPD_LISTEN=:8080
 ```
 
 In addition it is possible to set api contexts using env vars (otherwise only possible using the config file):
 ```
-CENOD_CONTEXT_SUPPORT="support:tymag-fycyh-gymof-dysuf-doseb-puxyx"
-CENOD_CONTEXT_FOOBAR="foobar:U3VuIE1hciAxOSAxMjoyNTo1NyBQTSBDRVQgMjAyMwo"
+EPHEMERUPD_CONTEXT_SUPPORT="support:tymag-fycyh-gymof-dysuf-doseb-puxyx"
+EPHEMERUPD_CONTEXT_FOOBAR="foobar:U3VuIE1hciAxOSAxMjoyNTo1NyBQTSBDRVQgMjAyMwo"
 ```
 
 Configuration can also be done using a config file (searched in the following locations):
-- `/etc/cenod.hcl`
-- `/usr/local/etc/cenod.hcl`
-- `~/.config/cenod/cenod.hcl`
-- `~/.cenod`
-- `$(pwd)/cenod.hcl`
+- `/etc/ephemerupd.hcl`
+- `/usr/local/etc/ephemerupd.hcl`
+- `~/.config/ephemerupd/ephemerupd.hcl`
+- `~/.ephemerupd`
+- `$(pwd)/ephemerupd.hcl`
 
 Or using the flag `-c`. Sample config file:
 ```
@@ -131,7 +131,7 @@ super = "root"
 The   server   serves   the   API  under   the   following   endpoint:
 `http://SERVERNAME[:PORT]/api/v1`  where   SERVERNAME[:PORT]  is  the
 argument  to  the  `-l`  commandline argument  or  the  config  option
-`listen` or the environment variable `CENOD_LISTEN`.
+`listen` or the environment variable `EPHEMERUPD_LISTEN`.
 
 By default  the server listens  on any interface  ip4 and ipv6  on TCP
 port  8080. You  can  specify a  server  name or  an  ipaddress and  a
@@ -140,6 +140,83 @@ the `-4` respective the `-6` commandline flags.
 
 It does not  support TLS at the  moment. Use a nginx  reverse proxy in
 front of it.
+
+### Server REST API
+
+Every endpoint returns a JSON object. Each returned object contains the data requested plus:
+
+- success: true or false
+- code: HTTP Response Code
+- message: error message, if success==false
+
+#### Endpoints
+
+| HTTP Method | Endpoint              | Parameters          | Input                      | Returns                               | Description                                   |
+|-------------|-----------------------|---------------------|----------------------------|---------------------------------------|-----------------------------------------------|
+| GET         | /v1/uploads           | apicontext,q,expire |                            | List of upload objects                | list upload objects                           |
+| POST        | /v1/uploads           |                     | multipart-formdata file[s] | List of 1 upload object if successful | upload a file and create a new upload object  |
+| GET         | /v1/uploads/{id}      |                     |                            | List of 1 upload object if successful | list one specific upload object matching {id} |
+| DELETE      | /v1/uploads/{id}      |                     |                            | Noting                                | delete an upload object identified by {id}    |
+| PUT         | /v1/uploads/{id}      |                     | JSON upload object         | List of 1 upload object if successful | modify an upload object identified by {id}    |
+| GET         | /v1/uploads/{id}/file |                     |                            | File download                         | Download the file associated with the  object |
+| GET         | /v1/forms             | apicontext,q,expire |                            | List of form objects                  | list form objects                             |
+| POST        | /v1/forms             |                     | JSON form object           | List of 1 form object if successful   | create a new form object                      |
+| GET         | /v1/forms/{id}        |                     |                            | List of 1 form object if successful   | list one specific form object matching {id}   |
+| DELETE      | /v1/forms/{id}        |                     |                            | Noting                                | delete an form object identified by {id}      |
+| PUT         | /v1/forms/{id}        |                     | JSON form object           | List of 1 form object if successful   | modify an form object identified by {id}      |
+
+#### Consumer URLs
+
+The following endpoints are no API urls, but accessed directly by consumers using their browser or `wget` etc:
+
+| URL                     | Description                                             |
+|-------------------------|---------------------------------------------------------|
+| /                       | Display a short welcome message, can be customized      |
+| /download/{id}[/{file}] | Download link returned after an upload has been created |
+| /form/{id}              | Upload form for consumer                                |
+
+#### API Objects
+
+Response:
+
+| Field   | Data Type | Description                           |
+|---------|-----------|---------------------------------------|
+| success | bool      | if true the request was successful    |
+| code    | int       | HTTP response code                    |
+| message | string    | error message, if any                 |
+| uploads | array     | list of upload objects (may be empty) |
+| forms   | array     | list of form objects (may be empty)   |
+
+Upload:
+
+| Field    | Data Type        | Description                                                                                                                                 |
+|----------|------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| id       | string           | unique identifier for the object                                                                                                            |
+| expire   | string           | when the upload has to expire, either "asap" or a Duration using numbers and the letters d,h,m,s (days,hours,minutes,seconds), e.g. 2d4h30m |
+| file     | string           | filename after uploading, this is what a consumer gets when downloading it                                                                  |
+| members  | array of strings | list of the original filenames                                                                                                              |
+| created  | timestamp        | time of object creation                                                                                                                     |
+| context  | string           | the API context the upload has been created under                                                                                           |
+| url      | string           | the download URL                                                                                                                            |
+
+Form:
+
+| Field       | Data Type | Description                                                                                                                               |
+|-------------|-----------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| id          | string    | unique identifier for the object                                                                                                          |
+| expire      | string    | when the form has to expire, either "asap" or a Duration using numbers and the letters d,h,m,s (days,hours,minutes,seconds), e.g. 2d4h30m |
+| description | string    | arbitrary description, shown on the form page                                                                                             |
+| context     | string    | the API context the form has been created under and the uploaded files will be created on                                                 |
+| notify      | string    | email address of the form creator, who gets an email once the consumer has uploaded files using the form                                  |
+| created     | timestamp | time of object creation                                                                                                                   |
+| url         | string    | the form URL                                                                                                                              |
+
+Note: if the expire field for a form  is not set or set to "asap" only
+1 upload  object can be created  from it.  However, if  a duration has
+been specified, the  form can be used multiple times  and thus creates
+multiple upload objects.
+
+
 
 ## Client Usage
 
@@ -181,7 +258,7 @@ endpoint = "http://localhost:8080/api/v1"
 apikey = "970b391f22f515d96b3e9b86a2c62c627968828e47b356994d2e583188b4190a"
 ```
 
-The `endpoint` is  the **Cenophane** server running  somewhere and the
+The `endpoint` is  the **ephemerup** server running  somewhere and the
 `apikey` is the token you got from the server operator..
 
 

@@ -26,8 +26,8 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/gofiber/keyauth/v2"
-	"github.com/tlinden/cenophane/cfg"
-	"github.com/tlinden/cenophane/common"
+	"github.com/tlinden/ephemerup/cfg"
+	"github.com/tlinden/ephemerup/common"
 )
 
 // sessions are context specific and can be global savely
@@ -47,7 +47,7 @@ func Runserver(conf *cfg.Config, args []string) error {
 	defer db.Close()
 
 	// setup authenticated endpoints
-	auth := SetupAuthStore(conf)
+	auth := SetupAuthStore(conf, db)
 
 	// setup api server
 	router := SetupServer(conf)
@@ -56,32 +56,50 @@ func Runserver(conf *cfg.Config, args []string) error {
 	api := router.Group(conf.ApiPrefix + ApiVersion)
 	{
 		// upload
-		api.Post("/file/", auth, func(c *fiber.Ctx) error {
-			return FilePut(c, conf, db)
-		})
-
-		// download w/o expire
-		api.Get("/file/:id/:file", auth, func(c *fiber.Ctx) error {
-			return FileGet(c, conf, db)
-		})
-		api.Get("/file/:id/", auth, func(c *fiber.Ctx) error {
-			return FileGet(c, conf, db)
+		api.Post("/uploads", auth, func(c *fiber.Ctx) error {
+			return UploadPost(c, conf, db)
 		})
 
 		// remove
-		api.Delete("/file/:id/", auth, func(c *fiber.Ctx) error {
-			err := DeleteUpload(c, conf, db)
+		api.Delete("/uploads/:id", auth, func(c *fiber.Ctx) error {
+			err := UploadDelete(c, conf, db)
 			return SendResponse(c, "", err)
 		})
 
 		// listing
-		api.Get("/list/", auth, func(c *fiber.Ctx) error {
-			return List(c, conf, db)
+		api.Get("/uploads", auth, func(c *fiber.Ctx) error {
+			return UploadsList(c, conf, db)
 		})
 
-		// info
-		api.Get("/upload/:id/", auth, func(c *fiber.Ctx) error {
-			return Describe(c, conf, db)
+		// info/describe
+		api.Get("/uploads/:id", auth, func(c *fiber.Ctx) error {
+			return UploadDescribe(c, conf, db)
+		})
+
+		// download w/o expire
+		api.Get("/uploads/:id/file", auth, func(c *fiber.Ctx) error {
+			return UploadFetch(c, conf, db)
+		})
+
+		// same for forms ************
+		api.Post("/forms", auth, func(c *fiber.Ctx) error {
+			return FormCreate(c, conf, db)
+		})
+
+		// remove
+		api.Delete("/forms/:id", auth, func(c *fiber.Ctx) error {
+			err := FormDelete(c, conf, db)
+			return SendResponse(c, "", err)
+		})
+
+		// listing
+		api.Get("/forms", auth, func(c *fiber.Ctx) error {
+			return FormsList(c, conf, db)
+		})
+
+		// info/describe
+		api.Get("/forms/:id", auth, func(c *fiber.Ctx) error {
+			return FormDescribe(c, conf, db)
 		})
 	}
 
@@ -92,12 +110,17 @@ func Runserver(conf *cfg.Config, args []string) error {
 		})
 
 		router.Get("/download/:id/:file", func(c *fiber.Ctx) error {
-			return FileGet(c, conf, db, shallExpire)
+			return UploadFetch(c, conf, db, shallExpire)
 		})
 
-		router.Get("/download/:id/", func(c *fiber.Ctx) error {
-			return FileGet(c, conf, db, shallExpire)
+		router.Get("/download/:id", func(c *fiber.Ctx) error {
+			return UploadFetch(c, conf, db, shallExpire)
 		})
+
+		router.Get("/form/:id", func(c *fiber.Ctx) error {
+			return FormPage(c, conf, db, shallExpire)
+		})
+
 	}
 
 	// setup cleaner
@@ -112,12 +135,23 @@ func Runserver(conf *cfg.Config, args []string) error {
 	return router.Listen(conf.Listen)
 }
 
-func SetupAuthStore(conf *cfg.Config) func(*fiber.Ctx) error {
-	AuthSetEndpoints(conf.ApiPrefix, ApiVersion, []string{"/file"})
+func SetupAuthStore(conf *cfg.Config, db *Db) func(*fiber.Ctx) error {
 	AuthSetApikeys(conf.Apicontexts)
 
 	return keyauth.New(keyauth.Config{
-		Validator:    AuthValidateAPIKey,
+		Validator: func(c *fiber.Ctx, key string) (bool, error) {
+			// we use a wrapper closure to be able to forward the db object
+			formuser, err := AuthValidateOnetimeKey(c, key, db)
+
+			// incoming apicontext matches a form id, accept it
+			if err == nil {
+				Log("Incoming API Context equals formuser: %t, id: %s", formuser, key)
+				return formuser, err
+			}
+
+			// nope, we need to check against regular configured apicontexts
+			return AuthValidateAPIKey(c, key)
+		},
 		ErrorHandler: AuthErrHandler,
 	})
 }
@@ -128,7 +162,7 @@ func SetupServer(conf *cfg.Config) *fiber.App {
 		StrictRouting: true,
 		Immutable:     true,
 		Prefork:       conf.Prefork,
-		ServerHeader:  "Cenophane Server",
+		ServerHeader:  "ephemerup Server",
 		AppName:       conf.AppName,
 		BodyLimit:     conf.BodyLimit,
 		Network:       conf.Network,

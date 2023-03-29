@@ -18,15 +18,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package api
 
 import (
-	"encoding/json"
 	"fmt"
-	"github.com/tlinden/cenophane/cfg"
-	"github.com/tlinden/cenophane/common"
+	"github.com/tlinden/ephemerup/cfg"
+	"github.com/tlinden/ephemerup/common"
 	//"github.com/alecthomas/repr"
 	bolt "go.etcd.io/bbolt"
 )
 
-const Bucket string = "uploads"
+const Bucket string = "data"
 
 // wrapper for bolt db
 type Db struct {
@@ -44,14 +43,14 @@ func (db *Db) Close() {
 	db.bolt.Close()
 }
 
-func (db *Db) Insert(id string, entry *common.Upload) error {
+func (db *Db) Insert(id string, entry common.Dbentry) error {
 	err := db.bolt.Update(func(tx *bolt.Tx) error {
 		bucket, err := tx.CreateBucketIfNotExists([]byte(Bucket))
 		if err != nil {
 			return fmt.Errorf("create bucket: %s", err)
 		}
 
-		jsonentry, err := json.Marshal(entry)
+		jsonentry, err := entry.Marshal()
 		if err != nil {
 			return fmt.Errorf("json marshalling failure: %s", err)
 		}
@@ -61,9 +60,6 @@ func (db *Db) Insert(id string, entry *common.Upload) error {
 			return fmt.Errorf("insert data: %s", err)
 		}
 
-		// results in:
-		// bbolt get /tmp/uploads.db uploads fb242922-86cb-43a8-92bc-b027c35f0586
-		// {"id":"fb242922-86cb-43a8-92bc-b027c35f0586","expire":"1d","file":"2023-02-17-13-09-data.zip"}
 		return nil
 	})
 	if err != nil {
@@ -87,12 +83,12 @@ func (db *Db) Delete(apicontext string, id string) error {
 			return fmt.Errorf("id %s not found", id)
 		}
 
-		upload := &common.Upload{}
-		if err := json.Unmarshal(j, &upload); err != nil {
+		entryContext, err := common.GetContext(j)
+		if err != nil {
 			return fmt.Errorf("unable to unmarshal json: %s", err)
 		}
 
-		if (apicontext != "" && (db.cfg.Super == apicontext || upload.Context == apicontext)) || apicontext == "" {
+		if (apicontext != "" && (db.cfg.Super == apicontext || entryContext == apicontext)) || apicontext == "" {
 			return bucket.Delete([]byte(id))
 		}
 
@@ -106,8 +102,8 @@ func (db *Db) Delete(apicontext string, id string) error {
 	return err
 }
 
-func (db *Db) List(apicontext string, filter string) (*common.Uploads, error) {
-	uploads := &common.Uploads{}
+func (db *Db) List(apicontext string, filter string, t int) (*common.Response, error) {
+	response := &common.Response{}
 
 	err := db.bolt.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(Bucket))
@@ -116,24 +112,31 @@ func (db *Db) List(apicontext string, filter string) (*common.Uploads, error) {
 		}
 
 		err := bucket.ForEach(func(id, j []byte) error {
-			upload := &common.Upload{}
-			if err := json.Unmarshal(j, &upload); err != nil {
+			entry, err := common.Unmarshal(j, t)
+			if err != nil {
 				return fmt.Errorf("unable to unmarshal json: %s", err)
 			}
 
-			fmt.Printf("apicontext: %s, filter: %s\n", apicontext, filter)
+			var entryContext string
+			if t == common.TypeUpload {
+				entryContext = entry.(*common.Upload).Context
+			} else {
+				entryContext = entry.(*common.Form).Context
+			}
+
+			//fmt.Printf("apicontext: %s, filter: %s\n", apicontext, filter)
 			if apicontext != "" && db.cfg.Super != apicontext {
 				// only return the uploads for this context
-				if apicontext == upload.Context {
+				if apicontext == entryContext {
 					// unless a filter needed OR no filter specified
-					if (filter != "" && upload.Context == filter) || filter == "" {
-						uploads.Entries = append(uploads.Entries, upload)
+					if (filter != "" && entryContext == filter) || filter == "" {
+						response.Append(entry)
 					}
 				}
 			} else {
 				// return all, because we operate a public service or current==super
-				if (filter != "" && upload.Context == filter) || filter == "" {
-					uploads.Entries = append(uploads.Entries, upload)
+				if (filter != "" && entryContext == filter) || filter == "" {
+					response.Append(entry)
 				}
 			}
 
@@ -143,12 +146,13 @@ func (db *Db) List(apicontext string, filter string) (*common.Uploads, error) {
 		return err // might be nil as well
 	})
 
-	return uploads, err
+	return response, err
 }
 
 // we only return one obj here, but could return more later
-func (db *Db) Get(apicontext string, id string) (*common.Uploads, error) {
-	uploads := &common.Uploads{}
+// FIXME: turn the id into a filter and call (Uploads|Forms)List(), same code!
+func (db *Db) Get(apicontext string, id string, t int) (*common.Response, error) {
+	response := &common.Response{}
 
 	err := db.bolt.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(Bucket))
@@ -161,35 +165,42 @@ func (db *Db) Get(apicontext string, id string) (*common.Uploads, error) {
 			return fmt.Errorf("No upload object found with id %s", id)
 		}
 
-		upload := &common.Upload{}
-		if err := json.Unmarshal(j, &upload); err != nil {
+		entry, err := common.Unmarshal(j, t)
+		if err != nil {
 			return fmt.Errorf("unable to unmarshal json: %s", err)
 		}
 
-		if (apicontext != "" && (db.cfg.Super == apicontext || upload.Context == apicontext)) || apicontext == "" {
+		var entryContext string
+		if t == common.TypeUpload {
+			entryContext = entry.(*common.Upload).Context
+		} else {
+			entryContext = entry.(*common.Form).Context
+		}
+
+		if (apicontext != "" && (db.cfg.Super == apicontext || entryContext == apicontext)) || apicontext == "" {
 			// allowed if no context (public or download)
 			// or if context matches or if context==super
-			uploads.Entries = append(uploads.Entries, upload)
+			response.Append(entry)
 		}
 
 		return nil
 	})
 
-	return uploads, err
+	return response, err
 }
 
 // a wrapper around Lookup() which extracts the 1st upload, if any
-func (db *Db) Lookup(apicontext string, id string) (*common.Upload, error) {
-	uploads, err := db.Get(apicontext, id)
+func (db *Db) Lookup(apicontext string, id string, t int) (*common.Response, error) {
+	response, err := db.Get(apicontext, id, t)
 
 	if err != nil {
 		// non existent db entry with that id, or other db error, see logs
-		return &common.Upload{}, fmt.Errorf("No upload object found with id %s", id)
+		return &common.Response{}, fmt.Errorf("No upload object found with id %s", id)
 	}
 
-	if len(uploads.Entries) == 0 {
-		return &common.Upload{}, fmt.Errorf("No upload object found with id %s", id)
+	if len(response.Uploads) == 0 {
+		return &common.Response{}, fmt.Errorf("No upload object found with id %s", id)
 	}
 
-	return uploads.Entries[0], nil
+	return response, nil
 }
