@@ -1,9 +1,9 @@
-# Cenophane
+# ephemerup
 Simple standalone file upload server with expiration and commandline client.
 
 ## Introduction
 
-**Cenophane** is a simple standalone  file server where every uploaded
+**ephemerup** is a simple standalone  file server where every uploaded
 file expires  sooner or later. The  server provides a RESTful  API and
 can be used easily with the commandline client `upctl`.
 
@@ -13,7 +13,7 @@ important enough to  keep them around. Think of  this szenario: you're
 working for  the network departement  and there's a problem  with your
 routing. Tech support  asks you to create a network  trace and send it
 to  them. But  you  can't because  the  trace file  is  too large  and
-sensitive to  be sent by email.  This is where **Cenophane**  comes to
+sensitive to  be sent by email.  This is where **ephemerup**  comes to
 the rescue.
 
 You upload the  file, send the download  url to the other  party and -
@@ -21,11 +21,11 @@ assuming you've utilized  the defaults - when they download  it, it is
 being deleted  immediately from the  server. But  you can also  set an
 expire time, say 5 days or something like that.
 
-The  download urls  generated  by **Cenophane**  consist  of a  unique
+The  download urls  generated  by **ephemerup**  consist  of a  unique
 onetime  hash, so  they  are somewhat  confident.  However, if  you're
 uploading really sensitive data, you better encrypt it.
 
-**Cenophane** also  supports something we  call an API  Context. There
+**ephemerup** also  supports something we  call an API  Context. There
 can be many such API contexts.  Each of these has an associated token,
 which  has  to be  used  by  legitimate  clients to  authenticate  and
 authorize. A user  can only manage uploads within  that context. Think
@@ -60,17 +60,17 @@ releases  available yet. You'll  need  a go  build  environment. Just  run
 There's a `Dockerfile` available for the server so you can build and run it using docker:
 ```
 make buildimage
-docker-compose run cenophane
+docker-compose run ephemerup
 ```
 Then use the client to test it.
 
 ## Server Usage
 
 ```
-cenod -h
+ephemerupd -h
       --apikeys strings     Api key[s] to allow access
   -a, --apiprefix string    API endpoint path (default "/api")
-  -n, --appname string      App name to say hi as (default "cenod v0.0.1")
+  -n, --appname string      App name to say hi as (default "ephemerupd v0.0.1")
   -b, --bodylimit int       Max allowed upload size in bytes (default 10250000000)
   -c, --config string       custom config file
   -D, --dbfile string       Bold database file to use (default "/tmp/uploads.db")
@@ -86,23 +86,23 @@ cenod -h
   -v, --version             Print program version
 ```
 
-All flags can be set using environment variables, prefix the flag with `CENOD_` and uppercase it, eg: 
+All flags can be set using environment variables, prefix the flag with `EPHEMERUPD_` and uppercase it, eg: 
 ```
-CENOD_LISTEN=:8080
+EPHEMERUPD_LISTEN=:8080
 ```
 
 In addition it is possible to set api contexts using env vars (otherwise only possible using the config file):
 ```
-CENOD_CONTEXT_SUPPORT="support:tymag-fycyh-gymof-dysuf-doseb-puxyx"
-CENOD_CONTEXT_FOOBAR="foobar:U3VuIE1hciAxOSAxMjoyNTo1NyBQTSBDRVQgMjAyMwo"
+EPHEMERUPD_CONTEXT_SUPPORT="support:tymag-fycyh-gymof-dysuf-doseb-puxyx"
+EPHEMERUPD_CONTEXT_FOOBAR="foobar:U3VuIE1hciAxOSAxMjoyNTo1NyBQTSBDRVQgMjAyMwo"
 ```
 
 Configuration can also be done using a config file (searched in the following locations):
-- `/etc/cenod.hcl`
-- `/usr/local/etc/cenod.hcl`
-- `~/.config/cenod/cenod.hcl`
-- `~/.cenod`
-- `$(pwd)/cenod.hcl`
+- `/etc/ephemerupd.hcl`
+- `/usr/local/etc/ephemerupd.hcl`
+- `~/.config/ephemerupd/ephemerupd.hcl`
+- `~/.ephemerupd`
+- `$(pwd)/ephemerupd.hcl`
 
 Or using the flag `-c`. Sample config file:
 ```
@@ -131,7 +131,7 @@ super = "root"
 The   server   serves   the   API  under   the   following   endpoint:
 `http://SERVERNAME[:PORT]/api/v1`  where   SERVERNAME[:PORT]  is  the
 argument  to  the  `-l`  commandline argument  or  the  config  option
-`listen` or the environment variable `CENOD_LISTEN`.
+`listen` or the environment variable `EPHEMERUPD_LISTEN`.
 
 By default  the server listens  on any interface  ip4 and ipv6  on TCP
 port  8080. You  can  specify a  server  name or  an  ipaddress and  a
@@ -258,7 +258,7 @@ endpoint = "http://localhost:8080/api/v1"
 apikey = "970b391f22f515d96b3e9b86a2c62c627968828e47b356994d2e583188b4190a"
 ```
 
-The `endpoint` is  the **Cenophane** server running  somewhere and the
+The `endpoint` is  the **ephemerup** server running  somewhere and the
 `apikey` is the token you got from the server operator..
 
 

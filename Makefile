@@ -27,7 +27,7 @@ COMMIT    = $(shell git rev-parse --short=8 HEAD)
 BUILD     = $(shell date +%Y.%m.%d.%H%M%S) 
 VERSION  := $(if $(filter $(BRANCH), development),$(version)-$(BRANCH)-$(COMMIT)-$(BUILD),$(version))
 HAVE_POD := $(shell pod2text -h 2>/dev/null)
-DAEMON   := cenod
+DAEMON   := ephemerupd
 
 all: cmd/formtemplate.go buildlocal buildlocalctl
 
@@ -35,7 +35,7 @@ buildlocalctl:
 	make -C upctl
 
 buildlocal:
-	go build -ldflags "-X 'github.com/tlinden/cenophane/cfg.VERSION=$(VERSION)'" -o $(DAEMON)
+	go build -ldflags "-X 'github.com/tlinden/ephemerup/cfg.VERSION=$(VERSION)'" -o $(DAEMON)
 
 buildimage: clean
 	docker-compose --verbose build
@@ -60,15 +60,15 @@ test:
 
 singletest:
 	@echo "Call like this: ''make singletest TEST=TestX1 MOD=lib"
-	go test -run $(TEST) github.com/tlinden/cenophane/$(MOD)
+	go test -run $(TEST) github.com/tlinden/ephemerup/$(MOD)
 
 cover-report:
 	go test ./... -cover -coverprofile=coverage.out
 	go tool cover -html=coverage.out
 
 show-versions: buildlocal
-	@echo "### cenod version:"
-	@./cenod --version
+	@echo "### ephemerupd version:"
+	@./ephemerupd --version
 
 	@echo
 	@echo "### go module versions:"

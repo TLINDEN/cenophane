@@ -1,3 +1,3 @@
-module github.com/tlinden/cenophane/common
+module github.com/tlinden/ephemerup/common
 
 go 1.18

@@ -19,8 +19,8 @@ package api
 
 import (
 	"fmt"
-	"github.com/tlinden/cenophane/cfg"
-	"github.com/tlinden/cenophane/common"
+	"github.com/tlinden/ephemerup/cfg"
+	"github.com/tlinden/ephemerup/common"
 	//"github.com/alecthomas/repr"
 	bolt "go.etcd.io/bbolt"
 )

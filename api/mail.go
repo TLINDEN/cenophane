@@ -19,7 +19,7 @@ package api
 
 import (
 	"fmt"
-	"github.com/tlinden/cenophane/cfg"
+	"github.com/tlinden/ephemerup/cfg"
 	"net/smtp"
 )
 

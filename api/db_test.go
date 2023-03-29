@@ -20,8 +20,8 @@ package api
 import (
 	//"github.com/alecthomas/repr"
 	"github.com/maxatome/go-testdeep/td"
-	"github.com/tlinden/cenophane/cfg"
-	"github.com/tlinden/cenophane/common"
+	"github.com/tlinden/ephemerup/cfg"
+	"github.com/tlinden/ephemerup/common"
 	"os"
 	"testing"
 	"time"
