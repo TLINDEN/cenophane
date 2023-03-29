@@ -75,7 +75,9 @@ func Execute() error {
 	f.StringVarP(&conf.AppName, "appname", "n", "ephemerupd "+conf.GetVersion(), "App name to say hi as")
 	f.IntVarP(&conf.BodyLimit, "bodylimit", "b", 10250000000, "Max allowed upload size in bytes")
 
-	f.Parse(os.Args[1:])
+	if err := f.Parse(os.Args[1:]); err != nil {
+		return err
+	}
 
 	// exclude -6 and -4
 	if conf.V4only && conf.V6only {
@@ -86,19 +88,19 @@ func Execute() error {
 	var k = koanf.New(".")
 
 	// Load the config files provided in the commandline or the default locations
-	configfiles := []string{}
+	var configfiles []string
 	configfile, _ := f.GetString("config")
 	if configfile != "" {
 		configfiles = []string{configfile}
 	} else {
 		configfiles = []string{
-			"/etc/ephemerupd.hcl", "/usr/local/etc/ephemerupd.hcl", // unix variants
-			filepath.Join(os.Getenv("HOME"), ".config", "ephemerupd", "ephemerupd.hcl"),
-			filepath.Join(os.Getenv("HOME"), ".ephemerupd"),
-			"ephemerupd.hcl",
+			"/etc/ephemerup.hcl", "/usr/local/etc/ephemerup.hcl", // unix variants
+			filepath.Join(os.Getenv("HOME"), ".config", "ephemerup", "ephemerup.hcl"),
+			filepath.Join(os.Getenv("HOME"), ".ephemerup"),
+			"ephemerup.hcl",
 		}
 	}
-
+	repr.Print(configfiles)
 	for _, cfgfile := range configfiles {
 		if _, err := os.Stat(cfgfile); err == nil {
 			if err := k.Load(file.Provider(cfgfile), hcl.Parser(true)); err != nil {
@@ -109,10 +111,12 @@ func Execute() error {
 	}
 
 	// env overrides config file
-	k.Load(env.Provider("EPHEMERUPD_", ".", func(s string) string {
+	if err := k.Load(env.Provider("EPHEMERUPD_", ".", func(s string) string {
 		return strings.Replace(strings.ToLower(
 			strings.TrimPrefix(s, "EPHEMERUPD_")), "_", ".", -1)
-	}), nil)
+	}), nil); err != nil {
+		return errors.New("error loading environment: " + err.Error())
+	}
 
 	// command line overrides env
 	if err := k.Load(posflag.Provider(f, ".", k), nil); err != nil {
@@ -120,7 +124,9 @@ func Execute() error {
 	}
 
 	// fetch values
-	k.Unmarshal("", &conf)
+	if err := k.Unmarshal("", &conf); err != nil {
+		return errors.New("error unmarshalling: " + err.Error())
+	}
 
 	// there may exist some api context variables
 	GetApicontextsFromEnv(&conf)
@@ -180,7 +186,7 @@ func Execute() error {
 eg:
 
    EPHEMERUPD_CONTEXT_SUPPORT="support:tymag-fycyh-gymof-dysuf-doseb-puxyx"
-                 ^^^^^^^- doesn't matter.
+                      ^^^^^^^- doesn't matter.
 
    Modifies cfg.Config directly
 */
@@ -197,9 +203,7 @@ func GetApicontextsFromEnv(conf *cfg.Config) {
 		}
 	}
 
-	for _, ap := range conf.Apicontexts {
-		contexts = append(contexts, ap)
-	}
+	contexts = append(contexts, conf.Apicontexts...)
 
 	conf.Apicontexts = contexts
 }

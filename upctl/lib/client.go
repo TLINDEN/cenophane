@@ -181,7 +181,9 @@ func UploadFiles(w io.Writer, c *cfg.Config, args []string) error {
 		var left float64
 		rq.R.SetUploadCallbackWithInterval(func(info req.UploadInfo) {
 			left = float64(info.UploadedSize) / float64(info.FileSize) * 100.0
-			bar.Add(int(left))
+			if err := bar.Add(int(left)); err != nil {
+				fmt.Print("\r")
+			}
 		}, 10*time.Millisecond)
 	}
 
@@ -278,7 +280,9 @@ func Download(w io.Writer, c *cfg.Config, args []string) error {
 
 		callback := func(info req.DownloadInfo) {
 			if info.Response.Response != nil {
-				bar.Add(1)
+				if err := bar.Add(1); err != nil {
+					fmt.Print("\r")
+				}
 			}
 		}
 
@@ -344,6 +348,4 @@ func CreateForm(w io.Writer, c *cfg.Config) error {
 	}
 
 	return RespondExtended(w, resp)
-
-	return nil
 }

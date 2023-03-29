@@ -62,10 +62,10 @@ type Config struct {
 	Network   string
 
 	// only settable via config
-	Apicontexts []Apicontext `koanf:"apicontext"`
+	Apicontexts []Apicontext `koanf:"apicontexts"`
 
 	// smtp settings
-	Mail Mailsettings `koanf:mail`
+	Mail Mailsettings `koanf:"mail"`
 
 	// Internals only
 	RegNormalizedFilename *regexp.Regexp

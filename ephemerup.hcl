@@ -2,7 +2,7 @@
 listen = ":8080"
 bodylimit = 10000
 
-apicontext = [
+apicontexts = [
   {
     context = "root"
     key = "0fddbff5d8010f81cd28a7d77f3e38981b13d6164c2fd6e1c3f60a4287630c37",

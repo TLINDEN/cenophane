@@ -33,8 +33,7 @@ func FormCommand(conf *cfg.Config) *cobra.Command {
 			// errors at this stage do not cause the usage to be shown
 			//cmd.SilenceUsage = true
 			if len(args) == 0 {
-				cmd.Help()
-				os.Exit(0)
+				return cmd.Help()
 			}
 			return nil
 		},

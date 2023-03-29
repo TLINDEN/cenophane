@@ -58,10 +58,6 @@ func DeleteExpiredUploads(conf *cfg.Config, db *Db) error {
 		return err
 	})
 
-	if err != nil {
-		Log("DB error: %s", err.Error())
-	}
-
 	return err
 }
 
@@ -74,7 +70,9 @@ func BackgroundCleaner(conf *cfg.Config, db *Db) chan bool {
 		for {
 			select {
 			case <-ticker.C:
-				DeleteExpiredUploads(conf, db)
+				if err := DeleteExpiredUploads(conf, db); err != nil {
+					Log("Failed to delete eypired uploads: %s", err.Error())
+				}
 			case <-done:
 				ticker.Stop()
 				return

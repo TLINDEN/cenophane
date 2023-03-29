@@ -38,8 +38,6 @@ func prepareExpire(expire string, start common.Timestamp) string {
 		return time.Unix(start.Unix()+int64(common.Duration2int(expire)), 0).
 			Format("2006-01-02 15:04:05")
 	}
-
-	return ""
 }
 
 // generic table writer

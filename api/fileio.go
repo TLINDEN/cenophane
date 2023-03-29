@@ -114,17 +114,23 @@ func ZipDir(directory, zipfilename string) error {
 	var wg sync.WaitGroup
 	wg.Add(1)
 
+	failure := make(chan string)
+
 	// don't chdir the server itself
 	go func() {
 		defer wg.Done()
 
-		os.Chdir(directory)
+		if err := os.Chdir(directory); err != nil {
+			failure <- "Failed to changedir: " + err.Error()
+			return
+		}
 		newDir, err := os.Getwd()
 		if err != nil {
+			failure <- "Failed to get cwd: " + err.Error()
 		}
+
 		if newDir != directory {
-			err = errors.New("Failed to changedir!")
-			return
+			failure <- "Failed to changedir!"
 		}
 
 		err = filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
@@ -171,9 +177,19 @@ func ZipDir(directory, zipfilename string) error {
 			_, err = io.Copy(headerWriter, f)
 			return err
 		})
+
+		if err != nil {
+			failure <- "Failed to zip directory: " + err.Error()
+		}
 	}()
 
 	wg.Wait()
+
+	goterr := <-failure
+
+	if goterr != "" {
+		return errors.New(goterr)
+	}
 
 	return err
 }

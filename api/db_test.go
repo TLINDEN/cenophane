@@ -112,6 +112,10 @@ func TestDboperation(t *testing.T) {
 			if tt.upload.Id != "" {
 				// set ts
 				ts, err := time.Parse(timeformat, tt.ts)
+				if err != nil {
+					t.Errorf("Could not parse time: " + err.Error())
+				}
+
 				tt.upload.Created = common.Timestamp{Time: ts}
 
 				// create new upload db object
@@ -162,7 +166,7 @@ func TestDboperation(t *testing.T) {
 				}
 
 				// fetch again, shall return empty
-				response, err = db.Get(tt.context, tt.id, common.TypeUpload)
+				_, err = db.Get(tt.context, tt.id, common.TypeUpload)
 				if err == nil {
 					t.Errorf("Could fetch upload object again although we deleted it")
 				}
@@ -171,6 +175,9 @@ func TestDboperation(t *testing.T) {
 			if tt.form.Id != "" {
 				// set ts
 				ts, err := time.Parse(timeformat, tt.ts)
+				if err != nil {
+					t.Errorf("Could not parse time: " + err.Error())
+				}
 				tt.form.Created = common.Timestamp{Time: ts}
 
 				// create new form db object
@@ -221,7 +228,7 @@ func TestDboperation(t *testing.T) {
 				}
 
 				// fetch again, shall return empty
-				response, err = db.Get(tt.context, tt.id, common.TypeForm)
+				_, err = db.Get(tt.context, tt.id, common.TypeForm)
 				if err == nil {
 					t.Errorf("Could fetch form object again although we deleted it")
 				}

@@ -82,7 +82,11 @@ func FormCreate(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	Log("Form created with API-Context %s", entry.Context)
 
 	// we do this in the background to not thwart the server
-	go db.Insert(id, entry)
+	go func() {
+		if err := db.Insert(id, entry); err != nil {
+			Log("Failed to insert: " + err.Error())
+		}
+	}()
 
 	// everything went well so far
 	res := &common.Response{Forms: []*common.Form{entry}}
