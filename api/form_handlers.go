@@ -73,6 +73,15 @@ func FormCreate(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 		entry.Notify = nt
 	}
 
+	if len(formdata.Description) != 0 {
+		des, err := common.Untaint(formdata.Description, cfg.RegText)
+		if err != nil {
+			return JsonStatus(c, fiber.StatusForbidden,
+				"Invalid description: "+err.Error())
+		}
+		entry.Description = des
+	}
+
 	// get url [and zip if there are multiple files]
 	returnUrl := strings.Join([]string{cfg.Url, "form", id}, "/")
 	entry.Url = returnUrl

@@ -19,6 +19,7 @@ package cmd
 import (
 	"errors"
 	"github.com/spf13/cobra"
+	"github.com/tlinden/ephemerup/common"
 	"github.com/tlinden/ephemerup/upctl/cfg"
 	"github.com/tlinden/ephemerup/upctl/lib"
 	"os"
@@ -43,6 +44,7 @@ func UploadCommand(conf *cfg.Config) *cobra.Command {
 
 	// options
 	uploadCmd.PersistentFlags().StringVarP(&conf.Expire, "expire", "e", "", "Expire setting: asap or duration (accepted shortcuts: dmh)")
+	uploadCmd.PersistentFlags().StringVarP(&conf.Description, "description", "D", "", "Description of the form")
 
 	uploadCmd.Aliases = append(uploadCmd.Aliases, "up")
 	uploadCmd.Aliases = append(uploadCmd.Aliases, "u")
@@ -59,7 +61,7 @@ func ListCommand(conf *cfg.Config) *cobra.Command {
 			// errors at this stage do not cause the usage to be shown
 			cmd.SilenceUsage = true
 
-			return lib.List(os.Stdout, conf, args)
+			return lib.List(os.Stdout, conf, args, common.TypeUpload)
 		},
 	}
 

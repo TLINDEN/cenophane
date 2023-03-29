@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/jarcoal/httpmock"
+	"github.com/tlinden/ephemerup/common"
 	"github.com/tlinden/ephemerup/upctl/cfg"
 	"io/ioutil"
 	"net/http"
@@ -232,7 +233,7 @@ func TestList(t *testing.T) {
 	for _, unit := range tests {
 		var w bytes.Buffer
 		Intercept(unit)
-		Check(t, unit, &w, List(&w, conf, []string{}))
+		Check(t, unit, &w, List(&w, conf, []string{}, common.TypeUpload))
 	}
 }
 

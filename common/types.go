@@ -36,13 +36,14 @@ type Dbentry interface {
 }
 
 type Upload struct {
-	Id      string    `json:"id"`
-	Expire  string    `json:"expire"`
-	File    string    `json:"file"`    // final filename (visible to the downloader)
-	Members []string  `json:"members"` // contains multiple files, so File is an archive
-	Created Timestamp `json:"uploaded"`
-	Context string    `json:"context"`
-	Url     string    `json:"url"`
+	Id          string    `json:"id"`
+	Expire      string    `json:"expire"`
+	File        string    `json:"file"`    // final filename (visible to the downloader)
+	Members     []string  `json:"members"` // contains multiple files, so File is an archive
+	Created     Timestamp `json:"uploaded"`
+	Context     string    `json:"context"`
+	Description string    `json:"description"`
+	Url         string    `json:"url"`
 }
 
 // this one is also used for marshalling to the client

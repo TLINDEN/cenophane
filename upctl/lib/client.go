@@ -190,7 +190,8 @@ func UploadFiles(w io.Writer, c *cfg.Config, args []string) error {
 	// actual post w/ settings
 	resp, err := rq.R.
 		SetFormData(map[string]string{
-			"expire": c.Expire,
+			"expire":      c.Expire,
+			"description": c.Description,
 		}).
 		Post(rq.Url)
 
@@ -205,8 +206,15 @@ func UploadFiles(w io.Writer, c *cfg.Config, args []string) error {
 	return RespondExtended(w, resp)
 }
 
-func List(w io.Writer, c *cfg.Config, args []string) error {
-	rq := Setup(c, "/uploads")
+func List(w io.Writer, c *cfg.Config, args []string, typ int) error {
+	var rq *Request
+
+	switch typ {
+	case common.TypeUpload:
+		rq = Setup(c, "/uploads")
+	case common.TypeForm:
+		rq = Setup(c, "/forms")
+	}
 
 	params := &ListParams{Apicontext: c.Apicontext}
 	resp, err := rq.R.
@@ -221,7 +229,14 @@ func List(w io.Writer, c *cfg.Config, args []string) error {
 		return err
 	}
 
-	return UploadsRespondTable(w, resp)
+	switch typ {
+	case common.TypeUpload:
+		return UploadsRespondTable(w, resp)
+	case common.TypeForm:
+		return FormsRespondTable(w, resp)
+	}
+
+	return nil
 }
 
 func Delete(w io.Writer, c *cfg.Config, args []string) error {
@@ -332,10 +347,10 @@ func CreateForm(w io.Writer, c *cfg.Config) error {
 
 	// actual post w/ settings
 	resp, err := rq.R.
-		SetFormData(map[string]string{
-			"expire":      c.Expire,
-			"description": c.Description,
-			"notify":      c.Notify,
+		SetBody(&common.Form{
+			Expire:      c.Expire,
+			Description: c.Description,
+			Notify:      c.Notify,
 		}).
 		Post(rq.Url)
 

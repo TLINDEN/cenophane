@@ -31,6 +31,10 @@ const formtemplate = `
           </p>
         </div>
         <div class="mb-3 row">
+          <label class="col-sm-2 col-form-label">Description</label>
+          <label class="col-sm-10 col-form-label">{{ .Description}} </label>
+        </div>
+        <div class="mb-3 row">
           <label for="file" class="col-sm-2 col-form-label">Select</label>
           <div class="col-sm-10">
             <input type="file" class="form-control" id="file" name="uploads[]" multiple

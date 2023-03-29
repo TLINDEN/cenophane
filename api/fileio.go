@@ -180,6 +180,8 @@ func ZipDir(directory, zipfilename string) error {
 
 		if err != nil {
 			failure <- "Failed to zip directory: " + err.Error()
+		} else {
+			close(failure)
 		}
 	}()
 

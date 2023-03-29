@@ -19,6 +19,7 @@ package cmd
 import (
 	//"errors"
 	"github.com/spf13/cobra"
+	"github.com/tlinden/ephemerup/common"
 	"github.com/tlinden/ephemerup/upctl/cfg"
 	"github.com/tlinden/ephemerup/upctl/lib"
 	"os"
@@ -43,6 +44,7 @@ func FormCommand(conf *cfg.Config) *cobra.Command {
 	formCmd.Aliases = append(formCmd.Aliases, "f")
 
 	formCmd.AddCommand(FormCreateCommand(conf))
+	formCmd.AddCommand(FormListCommand(conf))
 
 	return formCmd
 }
@@ -69,4 +71,26 @@ func FormCreateCommand(conf *cfg.Config) *cobra.Command {
 	formCreateCmd.Aliases = append(formCreateCmd.Aliases, "+")
 
 	return formCreateCmd
+}
+
+func FormListCommand(conf *cfg.Config) *cobra.Command {
+	var listCmd = &cobra.Command{
+		Use:   "list [options]",
+		Short: "List formss",
+		Long:  `List formss.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// errors at this stage do not cause the usage to be shown
+			cmd.SilenceUsage = true
+
+			return lib.List(os.Stdout, conf, nil, common.TypeForm)
+		},
+	}
+
+	// options
+	listCmd.PersistentFlags().StringVarP(&conf.Apicontext, "apicontext", "", "", "Filter by given API context")
+
+	listCmd.Aliases = append(listCmd.Aliases, "ls")
+	listCmd.Aliases = append(listCmd.Aliases, "l")
+
+	return listCmd
 }

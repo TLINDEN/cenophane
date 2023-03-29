@@ -271,7 +271,7 @@ The `endpoint` is  the **ephemerup** server running  somewhere and the
 - upctl: get rid of HandleResponse(), used only once anyway
 - add form so that public users can upload
 - use Writer for output.go so we can unit test the stuff in there
-
+- add (default by time!) sorting to list outputs, and add sort flag
 
 
 ## BUGS

@@ -21,10 +21,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	//"github.com/alecthomas/repr"
 	"github.com/imroc/req/v3"
 	"github.com/olekukonko/tablewriter"
 	"github.com/tlinden/ephemerup/common"
 	"io"
+	"sort"
 	"strings"
 	"time"
 )
@@ -77,7 +79,8 @@ func WriteExtended(w io.Writer, response *common.Response) {
 	// we shall only have 1 element, however, if we ever support more, here we go
 	for _, entry := range response.Uploads {
 		expire := prepareExpire(entry.Expire, entry.Created)
-		fmt.Fprintf(w, format, "Id", entry.Id)
+		fmt.Fprintf(w, format, "Upload-Id", entry.Id)
+		fmt.Fprintf(w, format, "Description", entry.Id)
 		fmt.Fprintf(w, format, "Expire", expire)
 		fmt.Fprintf(w, format, "Context", entry.Context)
 		fmt.Fprintf(w, format, "Created", entry.Created)
@@ -88,18 +91,18 @@ func WriteExtended(w io.Writer, response *common.Response) {
 
 	for _, entry := range response.Forms {
 		expire := prepareExpire(entry.Expire, entry.Created)
-		fmt.Fprintf(w, format, "Id", entry.Id)
+		fmt.Fprintf(w, format, "Form-Id", entry.Id)
+		fmt.Fprintf(w, format, "Description", entry.Description)
 		fmt.Fprintf(w, format, "Expire", expire)
 		fmt.Fprintf(w, format, "Context", entry.Context)
 		fmt.Fprintf(w, format, "Created", entry.Created)
-		fmt.Fprintf(w, format, "Description", entry.Description)
 		fmt.Fprintf(w, format, "Notify", entry.Notify)
 		fmt.Fprintf(w, format, "Url", entry.Url)
 		fmt.Fprintln(w)
 	}
 }
 
-// extract an common.Uploads{} struct from json response
+// extract an common.Response{} struct from json response
 func GetResponse(resp *req.Response) (*common.Response, error) {
 	response := common.Response{}
 
@@ -125,15 +128,49 @@ func UploadsRespondTable(w io.Writer, resp *req.Response) error {
 		fmt.Fprintln(w, response.Message)
 	}
 
+	sort.SliceStable(response.Uploads, func(i, j int) bool {
+		return response.Uploads[i].Created.Time.Unix() < response.Uploads[j].Created.Time.Unix()
+	})
+
 	// tablewriter
 	data := [][]string{}
 	for _, entry := range response.Uploads {
 		data = append(data, []string{
-			entry.Id, entry.Expire, entry.Context, entry.Created.Format("2006-01-02 15:04:05"),
+			entry.Id, entry.Description, entry.Expire, entry.Context,
+			entry.Created.Format("2006-01-02 15:04:05"), entry.File,
 		})
 	}
 
-	WriteTable(w, []string{"ID", "EXPIRE", "CONTEXT", "CREATED"}, data)
+	WriteTable(w, []string{"UPLOAD-ID", "DESCRIPTION", "EXPIRE", "CONTEXT", "CREATED", "FILE"}, data)
+
+	return nil
+}
+
+// turn the Forms{} struct into a table and print it
+func FormsRespondTable(w io.Writer, resp *req.Response) error {
+	response, err := GetResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if response.Message != "" {
+		fmt.Fprintln(w, response.Message)
+	}
+
+	sort.SliceStable(response.Forms, func(i, j int) bool {
+		return response.Forms[i].Created.Time.Unix() < response.Forms[j].Created.Time.Unix()
+	})
+
+	// tablewriter
+	data := [][]string{}
+	for _, entry := range response.Forms {
+		data = append(data, []string{
+			entry.Id, entry.Description, entry.Expire, entry.Context,
+			entry.Created.Format("2006-01-02 15:04:05"), entry.Notify,
+		})
+	}
+
+	WriteTable(w, []string{"FORM-ID", "DESCRIPTION", "EXPIRE", "CONTEXT", "CREATED", "NOTIFY"}, data)
 
 	return nil
 }
