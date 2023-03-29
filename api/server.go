@@ -26,8 +26,8 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/gofiber/keyauth/v2"
-	"github.com/tlinden/cenophane/cfg"
-	"github.com/tlinden/cenophane/common"
+	"github.com/tlinden/ephemerup/cfg"
+	"github.com/tlinden/ephemerup/common"
 )
 
 // sessions are context specific and can be global savely
@@ -128,7 +128,7 @@ func SetupServer(conf *cfg.Config) *fiber.App {
 		StrictRouting: true,
 		Immutable:     true,
 		Prefork:       conf.Prefork,
-		ServerHeader:  "Cenophane Server",
+		ServerHeader:  "ephemerup Server",
 		AppName:       conf.AppName,
 		BodyLimit:     conf.BodyLimit,
 		Network:       conf.Network,

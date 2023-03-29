@@ -21,7 +21,7 @@ import (
 	//"github.com/alecthomas/repr"
 	"fmt"
 	"github.com/jarcoal/httpmock"
-	"github.com/tlinden/cenophane/upctl/cfg"
+	"github.com/tlinden/ephemerup/upctl/cfg"
 	"net/http"
 	"testing"
 )
@@ -39,7 +39,7 @@ type Unit struct {
 	method   string   // method to use
 }
 
-// simulate our cenophane server
+// simulate our ephemerup server
 func Intercept(tt Unit) {
 	httpmock.RegisterResponder(tt.method, endpoint+tt.route,
 		func(request *http.Request) (*http.Response, error) {

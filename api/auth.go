@@ -23,7 +23,7 @@ import (
 	"errors"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/keyauth/v2"
-	"github.com/tlinden/cenophane/cfg"
+	"github.com/tlinden/ephemerup/cfg"
 	"regexp"
 )
 

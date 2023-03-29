@@ -29,8 +29,8 @@ import (
 	flag "github.com/spf13/pflag"
 
 	"github.com/alecthomas/repr"
-	"github.com/tlinden/cenophane/api"
-	"github.com/tlinden/cenophane/cfg"
+	"github.com/tlinden/ephemerup/api"
+	"github.com/tlinden/ephemerup/cfg"
 
 	"io/ioutil"
 	"os"
@@ -71,7 +71,7 @@ func Execute() error {
 	f.BoolVarP(&conf.V6only, "ipv6", "6", false, "Only listen on ipv6")
 
 	f.BoolVarP(&conf.Prefork, "prefork", "p", false, "Prefork server threads")
-	f.StringVarP(&conf.AppName, "appname", "n", "cenod "+conf.GetVersion(), "App name to say hi as")
+	f.StringVarP(&conf.AppName, "appname", "n", "ephemerupd "+conf.GetVersion(), "App name to say hi as")
 	f.IntVarP(&conf.BodyLimit, "bodylimit", "b", 10250000000, "Max allowed upload size in bytes")
 
 	f.Parse(os.Args[1:])
@@ -91,10 +91,10 @@ func Execute() error {
 		configfiles = []string{configfile}
 	} else {
 		configfiles = []string{
-			"/etc/cenod.hcl", "/usr/local/etc/cenod.hcl", // unix variants
-			filepath.Join(os.Getenv("HOME"), ".config", "cenod", "cenod.hcl"),
-			filepath.Join(os.Getenv("HOME"), ".cenod"),
-			"cenod.hcl",
+			"/etc/ephemerupd.hcl", "/usr/local/etc/ephemerupd.hcl", // unix variants
+			filepath.Join(os.Getenv("HOME"), ".config", "ephemerupd", "ephemerupd.hcl"),
+			filepath.Join(os.Getenv("HOME"), ".ephemerupd"),
+			"ephemerupd.hcl",
 		}
 	}
 
@@ -108,9 +108,9 @@ func Execute() error {
 	}
 
 	// env overrides config file
-	k.Load(env.Provider("CENOD_", ".", func(s string) string {
+	k.Load(env.Provider("EPHEMERUPD_", ".", func(s string) string {
 		return strings.Replace(strings.ToLower(
-			strings.TrimPrefix(s, "CENOD_")), "_", ".", -1)
+			strings.TrimPrefix(s, "EPHEMERUPD_")), "_", ".", -1)
 	}), nil)
 
 	// command line overrides env
@@ -157,11 +157,11 @@ func Execute() error {
 
    Multiple env vars are supported in this format:
 
-   CENOD_CONTEXT_$(NAME)="<context>:<key>"
+   EPHEMERUPD_CONTEXT_$(NAME)="<context>:<key>"
 
 eg:
 
-   CENOD_CONTEXT_SUPPORT="support:tymag-fycyh-gymof-dysuf-doseb-puxyx"
+   EPHEMERUPD_CONTEXT_SUPPORT="support:tymag-fycyh-gymof-dysuf-doseb-puxyx"
                  ^^^^^^^- doesn't matter.
 
    Modifies cfg.Config directly
@@ -171,7 +171,7 @@ func GetApicontextsFromEnv(conf *cfg.Config) {
 
 	for _, envvar := range os.Environ() {
 		pair := strings.SplitN(envvar, "=", 2)
-		if strings.HasPrefix(pair[0], "CENOD_CONTEXT_") {
+		if strings.HasPrefix(pair[0], "EPHEMERUPD_CONTEXT_") {
 			c := strings.SplitN(pair[1], ":", 2)
 			if len(c) == 2 {
 				contexts = append(contexts, cfg.Apicontext{Context: c[0], Key: c[1]})
