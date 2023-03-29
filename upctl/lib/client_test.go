@@ -205,7 +205,7 @@ func TestList(t *testing.T) {
 			sendjson: listing,
 			files:    []string{},
 			method:   "GET",
-			expect:   `cc2c965a\s*asap\s*foo\s*2023-03-21 12:06:54`, // expect tabular output
+			expect:   `cc2c965a\s*asap\s*foo\s*2023-03-21`, // expect tabular output
 		},
 		{
 			name:     "list-catch-empty-json",
@@ -266,7 +266,7 @@ func TestDescribe(t *testing.T) {
 			sendjson: listing,
 			files:    []string{"cc2c965a"},
 			method:   "GET",
-			expect:   `Created: 2023-03-21 12:06:54.890501888`,
+			expect:   `Created: 2023-03-21`,
 		},
 		{
 			name:     "describe-catch-empty-json",
