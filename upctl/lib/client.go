@@ -48,6 +48,7 @@ type Request struct {
 
 type ListParams struct {
 	Apicontext string `json:"apicontext"`
+	Query      string `json:"query"`
 }
 
 const Maxwidth = 12
@@ -181,14 +182,17 @@ func UploadFiles(w io.Writer, c *cfg.Config, args []string) error {
 		var left float64
 		rq.R.SetUploadCallbackWithInterval(func(info req.UploadInfo) {
 			left = float64(info.UploadedSize) / float64(info.FileSize) * 100.0
-			bar.Add(int(left))
+			if err := bar.Add(int(left)); err != nil {
+				fmt.Print("\r")
+			}
 		}, 10*time.Millisecond)
 	}
 
 	// actual post w/ settings
 	resp, err := rq.R.
 		SetFormData(map[string]string{
-			"expire": c.Expire,
+			"expire":      c.Expire,
+			"description": c.Description,
 		}).
 		Post(rq.Url)
 
@@ -203,10 +207,17 @@ func UploadFiles(w io.Writer, c *cfg.Config, args []string) error {
 	return RespondExtended(w, resp)
 }
 
-func List(w io.Writer, c *cfg.Config, args []string) error {
-	rq := Setup(c, "/uploads")
+func List(w io.Writer, c *cfg.Config, args []string, typ int) error {
+	var rq *Request
 
-	params := &ListParams{Apicontext: c.Apicontext}
+	switch typ {
+	case common.TypeUpload:
+		rq = Setup(c, "/uploads")
+	case common.TypeForm:
+		rq = Setup(c, "/forms")
+	}
+
+	params := &ListParams{Apicontext: c.Apicontext, Query: c.Query}
 	resp, err := rq.R.
 		SetBodyJsonMarshal(params).
 		Get(rq.Url)
@@ -219,12 +230,28 @@ func List(w io.Writer, c *cfg.Config, args []string) error {
 		return err
 	}
 
-	return UploadsRespondTable(w, resp)
+	switch typ {
+	case common.TypeUpload:
+		return UploadsRespondTable(w, resp)
+	case common.TypeForm:
+		return FormsRespondTable(w, resp)
+	}
+
+	return nil
 }
 
-func Delete(w io.Writer, c *cfg.Config, args []string) error {
+func Delete(w io.Writer, c *cfg.Config, args []string, typ int) error {
 	for _, id := range args {
-		rq := Setup(c, "/uploads/"+id+"/")
+		var rq *Request
+		caption := "Upload"
+
+		switch typ {
+		case common.TypeUpload:
+			rq = Setup(c, "/uploads/"+id)
+		case common.TypeForm:
+			rq = Setup(c, "/forms/"+id)
+			caption = "Form"
+		}
 
 		resp, err := rq.R.Delete(rq.Url)
 
@@ -236,20 +263,27 @@ func Delete(w io.Writer, c *cfg.Config, args []string) error {
 			return err
 		}
 
-		fmt.Fprintf(w, "Upload %s successfully deleted.\n", id)
+		fmt.Fprintf(w, "%s %s successfully deleted.\n", caption, id)
 	}
 
 	return nil
 }
 
-func Describe(w io.Writer, c *cfg.Config, args []string) error {
+func Describe(w io.Writer, c *cfg.Config, args []string, typ int) error {
 	if len(args) == 0 {
 		return errors.New("No id provided!")
 	}
 
+	var rq *Request
 	id := args[0] // we describe only 1 object
 
-	rq := Setup(c, "/uploads/"+id)
+	switch typ {
+	case common.TypeUpload:
+		rq = Setup(c, "/uploads/"+id)
+	case common.TypeForm:
+		rq = Setup(c, "/forms/"+id)
+	}
+
 	resp, err := rq.R.Get(rq.Url)
 
 	if err != nil {
@@ -278,7 +312,9 @@ func Download(w io.Writer, c *cfg.Config, args []string) error {
 
 		callback := func(info req.DownloadInfo) {
 			if info.Response.Response != nil {
-				bar.Add(1)
+				if err := bar.Add(1); err != nil {
+					fmt.Print("\r")
+				}
 			}
 		}
 
@@ -328,10 +364,10 @@ func CreateForm(w io.Writer, c *cfg.Config) error {
 
 	// actual post w/ settings
 	resp, err := rq.R.
-		SetFormData(map[string]string{
-			"expire":      c.Expire,
-			"description": c.Description,
-			"notify":      c.Notify,
+		SetBody(&common.Form{
+			Expire:      c.Expire,
+			Description: c.Description,
+			Notify:      c.Notify,
 		}).
 		Post(rq.Url)
 
@@ -344,6 +380,4 @@ func CreateForm(w io.Writer, c *cfg.Config) error {
 	}
 
 	return RespondExtended(w, resp)
-
-	return nil
 }

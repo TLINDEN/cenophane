@@ -23,6 +23,7 @@ import (
 	"github.com/tlinden/ephemerup/common"
 	//"github.com/alecthomas/repr"
 	bolt "go.etcd.io/bbolt"
+	"regexp"
 )
 
 const Bucket string = "data"
@@ -102,8 +103,9 @@ func (db *Db) Delete(apicontext string, id string) error {
 	return err
 }
 
-func (db *Db) List(apicontext string, filter string, t int) (*common.Response, error) {
+func (db *Db) List(apicontext string, filter string, query string, t int) (*common.Response, error) {
 	response := &common.Response{}
+	qr := regexp.MustCompile(query)
 
 	err := db.bolt.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(Bucket))
@@ -112,9 +114,15 @@ func (db *Db) List(apicontext string, filter string, t int) (*common.Response, e
 		}
 
 		err := bucket.ForEach(func(id, j []byte) error {
+			allowed := false
 			entry, err := common.Unmarshal(j, t)
+
 			if err != nil {
 				return fmt.Errorf("unable to unmarshal json: %s", err)
+			}
+
+			if !entry.IsType(t) {
+				return nil
 			}
 
 			var entryContext string
@@ -124,20 +132,40 @@ func (db *Db) List(apicontext string, filter string, t int) (*common.Response, e
 				entryContext = entry.(*common.Form).Context
 			}
 
-			//fmt.Printf("apicontext: %s, filter: %s\n", apicontext, filter)
+			// check if the user is allowed to list this entry
 			if apicontext != "" && db.cfg.Super != apicontext {
-				// only return the uploads for this context
+				// authenticated user but not member of super
+				// only return the uploads matching her context
 				if apicontext == entryContext {
-					// unless a filter needed OR no filter specified
+					// unless a filter OR no filter specified
 					if (filter != "" && entryContext == filter) || filter == "" {
-						response.Append(entry)
+						allowed = true
 					}
 				}
 			} else {
 				// return all, because we operate a public service or current==super
 				if (filter != "" && entryContext == filter) || filter == "" {
-					response.Append(entry)
+					allowed = true
 				}
+			}
+
+			if allowed {
+				// user is allowed to view this entry, check if she also wants to see it
+				if query != "" {
+					if entry.MatchDescription(qr) ||
+						entry.MatchExpire(qr) ||
+						entry.MatchCreated(qr) ||
+						entry.MatchFile(qr) {
+						allowed = true
+					} else {
+						allowed = false
+					}
+				}
+			}
+
+			if allowed {
+				// ok, legit and wanted
+				response.Append(entry)
 			}
 
 			return nil

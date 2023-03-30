@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/jarcoal/httpmock"
+	"github.com/tlinden/ephemerup/common"
 	"github.com/tlinden/ephemerup/upctl/cfg"
 	"io/ioutil"
 	"net/http"
@@ -205,7 +206,7 @@ func TestList(t *testing.T) {
 			sendjson: listing,
 			files:    []string{},
 			method:   "GET",
-			expect:   `cc2c965a\s*asap\s*foo\s*2023-03-21 12:06:54`, // expect tabular output
+			expect:   `cc2c965a\s*asap\s*foo\s*2023-03-21`, // expect tabular output
 		},
 		{
 			name:     "list-catch-empty-json",
@@ -232,7 +233,7 @@ func TestList(t *testing.T) {
 	for _, unit := range tests {
 		var w bytes.Buffer
 		Intercept(unit)
-		Check(t, unit, &w, List(&w, conf, []string{}))
+		Check(t, unit, &w, List(&w, conf, []string{}, common.TypeUpload))
 	}
 }
 
@@ -266,7 +267,7 @@ func TestDescribe(t *testing.T) {
 			sendjson: listing,
 			files:    []string{"cc2c965a"},
 			method:   "GET",
-			expect:   `Created: 2023-03-21 12:06:54.890501888`,
+			expect:   `Created: 2023-03-21`,
 		},
 		{
 			name:     "describe-catch-empty-json",
@@ -294,7 +295,7 @@ func TestDescribe(t *testing.T) {
 		var w bytes.Buffer
 		unit.route += unit.files[0]
 		Intercept(unit)
-		Check(t, unit, &w, Describe(&w, conf, unit.files))
+		Check(t, unit, &w, Describe(&w, conf, unit.files, common.TypeUpload))
 	}
 }
 
@@ -344,9 +345,9 @@ func TestDelete(t *testing.T) {
 
 	for _, unit := range tests {
 		var w bytes.Buffer
-		unit.route += unit.files[0] + "/"
+		unit.route += unit.files[0]
 		Intercept(unit)
-		Check(t, unit, &w, Delete(&w, conf, unit.files))
+		Check(t, unit, &w, Delete(&w, conf, unit.files, common.TypeUpload))
 	}
 }
 

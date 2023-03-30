@@ -36,7 +36,7 @@ func FormCreate(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	var formdata common.Form
 
 	// init form obj
-	entry := &common.Form{Id: id, Created: common.Timestamp{Time: time.Now()}}
+	entry := &common.Form{Id: id, Created: common.Timestamp{Time: time.Now()}, Type: common.TypeForm}
 
 	// retrieve the API Context name from the session
 	apicontext, err := SessionGetApicontext(c)
@@ -73,6 +73,15 @@ func FormCreate(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 		entry.Notify = nt
 	}
 
+	if len(formdata.Description) != 0 {
+		des, err := common.Untaint(formdata.Description, cfg.RegText)
+		if err != nil {
+			return JsonStatus(c, fiber.StatusForbidden,
+				"Invalid description: "+err.Error())
+		}
+		entry.Description = des
+	}
+
 	// get url [and zip if there are multiple files]
 	returnUrl := strings.Join([]string{cfg.Url, "form", id}, "/")
 	entry.Url = returnUrl
@@ -82,7 +91,11 @@ func FormCreate(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	Log("Form created with API-Context %s", entry.Context)
 
 	// we do this in the background to not thwart the server
-	go db.Insert(id, entry)
+	go func() {
+		if err := db.Insert(id, entry); err != nil {
+			Log("Failed to insert: " + err.Error())
+		}
+	}()
 
 	// everything went well so far
 	res := &common.Response{Forms: []*common.Form{entry}}
@@ -136,6 +149,12 @@ func FormsList(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 			"Invalid api context filter provided!")
 	}
 
+	query, err := common.Untaint(setcontext.Query, cfg.RegQuery)
+	if err != nil {
+		return JsonStatus(c, fiber.StatusForbidden,
+			"Invalid query provided!")
+	}
+
 	// retrieve the API Context name from the session
 	apicontext, err := SessionGetApicontext(c)
 	if err != nil {
@@ -144,7 +163,7 @@ func FormsList(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// get list
-	response, err := db.List(apicontext, filter, common.TypeForm)
+	response, err := db.List(apicontext, filter, query, common.TypeForm)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"Unable to list forms: "+err.Error())

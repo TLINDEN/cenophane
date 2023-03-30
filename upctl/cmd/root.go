@@ -130,13 +130,12 @@ func initConfig(cmd *cobra.Command, cfg *cfg.Config) error {
 	v.SetEnvPrefix("upctl")
 
 	// map flags to viper
-	bindFlags(cmd, v)
-
-	return nil
+	return bindFlags(cmd, v)
 }
 
 // bind flags to viper settings (env+cfgfile)
-func bindFlags(cmd *cobra.Command, v *viper.Viper) {
+func bindFlags(cmd *cobra.Command, v *viper.Viper) error {
+	var fail error
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
 		// map flag name to config variable
 		configName := f.Name
@@ -144,7 +143,11 @@ func bindFlags(cmd *cobra.Command, v *viper.Viper) {
 		// use config variable if flag is not set and config is set
 		if !f.Changed && v.IsSet(configName) {
 			val := v.Get(configName)
-			cmd.Flags().Set(f.Name, fmt.Sprintf("%v", val))
+			if err := cmd.Flags().Set(f.Name, fmt.Sprintf("%v", val)); err != nil {
+				fail = err
+			}
 		}
 	})
+
+	return fail
 }

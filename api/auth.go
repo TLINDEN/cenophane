@@ -71,6 +71,9 @@ func AuthValidateOnetimeKey(c *fiber.Ctx, key string, db *Db) (bool, error) {
 	}
 
 	sess, err := Sessionstore.Get(c)
+	if err != nil {
+		return false, errors.New("Could not retrieve session from Sessionstore: " + err.Error())
+	}
 
 	// store the  result into the session, the 'formid'  key tells the
 	// upload handler that the apicontext it sees is in fact a form id

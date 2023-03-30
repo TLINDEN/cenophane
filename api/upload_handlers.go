@@ -33,6 +33,7 @@ import (
 
 type SetContext struct {
 	Apicontext string `json:"apicontext" form:"apicontext"`
+	Query      string `json:"query" form:"query"`
 }
 
 func UploadPost(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
@@ -53,7 +54,10 @@ func UploadPost(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	var returnUrl string
 	var formdata Meta
 
-	os.MkdirAll(filepath.Join(cfg.StorageDir, id), os.ModePerm)
+	if err := os.MkdirAll(filepath.Join(cfg.StorageDir, id), os.ModePerm); err != nil {
+		return JsonStatus(c, fiber.StatusInternalServerError,
+			"Unable to initialize directories: "+err.Error())
+	}
 
 	// fetch auxiliary form data
 	form, err := c.MultipartForm()
@@ -63,7 +67,7 @@ func UploadPost(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// init upload obj
-	entry := &common.Upload{Id: id, Created: common.Timestamp{Time: time.Now()}}
+	entry := &common.Upload{Id: id, Created: common.Timestamp{Time: time.Now()}, Type: common.TypeUpload}
 
 	// retrieve the API Context name from the session
 	apicontext, err := SessionGetApicontext(c)
@@ -114,7 +118,11 @@ func UploadPost(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	Log("Uploaded with API-Context %s", entry.Context)
 
 	// we do this in the background to not thwart the server
-	go db.Insert(id, entry)
+	go func() {
+		if err := db.Insert(id, entry); err != nil {
+			Log("Failed to insert: " + err.Error())
+		}
+	}()
 
 	// everything went well so far
 	res := &common.Response{Uploads: []*common.Upload{entry}}
@@ -131,7 +139,9 @@ func UploadPost(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 			if err == nil {
 				if len(r.Forms) == 1 {
 					if r.Forms[0].Expire == "asap" {
-						db.Delete(apicontext, formid)
+						if err := db.Delete(apicontext, formid); err != nil {
+							Log("Failed to delete formid %s: %s", formid, err.Error())
+						}
 					}
 
 					// email notification to form creator
@@ -184,7 +194,11 @@ func UploadFetch(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) err
 
 	if _, err := os.Stat(filename); err != nil {
 		// db entry is there, but file isn't (anymore?)
-		go db.Delete(apicontext, id)
+		go func() {
+			if err := db.Delete(apicontext, id); err != nil {
+				Log("Unable to delete entry id %s: %s", id, err.Error())
+			}
+		}()
 		return fiber.NewError(404, "No download with that id could be found!")
 	}
 
@@ -192,12 +206,14 @@ func UploadFetch(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallExpire ...bool) err
 	err = c.Download(filename, file)
 
 	if len(shallExpire) > 0 {
-		if shallExpire[0] == true {
+		if shallExpire[0] {
 			go func() {
 				// check if we need to delete the file now and do it in the background
 				if upload.Expire == "asap" {
 					cleanup(filepath.Join(cfg.StorageDir, id))
-					db.Delete(apicontext, id)
+					if err := db.Delete(apicontext, id); err != nil {
+						Log("Unable to delete entry id %s: %s", id, err.Error())
+					}
 				}
 			}()
 		}
@@ -241,17 +257,23 @@ func UploadDelete(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 
 // returns the whole list + error code, no post processing by server
 func UploadsList(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
-	// fetch filter from body(json expected)
+	// fetch apifilter+query from body(json expected)
 	setcontext := new(SetContext)
 	if err := c.BodyParser(setcontext); err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"Unable to parse body: "+err.Error())
 	}
 
-	filter, err := common.Untaint(setcontext.Apicontext, cfg.RegKey)
+	apifilter, err := common.Untaint(setcontext.Apicontext, cfg.RegKey)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
-			"Invalid api context filter provided!")
+			"Invalid api context apifilter provided!")
+	}
+
+	query, err := common.Untaint(setcontext.Query, cfg.RegQuery)
+	if err != nil {
+		return JsonStatus(c, fiber.StatusForbidden,
+			"Invalid query provided!")
 	}
 
 	// retrieve the API Context name from the session
@@ -262,7 +284,7 @@ func UploadsList(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// get list
-	uploads, err := db.List(apicontext, filter, common.TypeUpload)
+	uploads, err := db.List(apicontext, apifilter, query, common.TypeUpload)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"Unable to list uploads: "+err.Error())

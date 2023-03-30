@@ -72,24 +72,25 @@ var dbtests = []struct {
 	context  string
 	ts       string
 	filter   string
+	query    string
 	upload   common.Upload
 	form     common.Form
 }{
 	{
 		"upload", "test.db", false, "1", "foo",
-		"2023-03-10T11:45:00.000Z", "",
+		"2023-03-10T11:45:00.000Z", "", "",
 		common.Upload{
 			Id: "1", Expire: "asap", File: "none", Context: "foo",
-			Created: common.Timestamp{}},
+			Created: common.Timestamp{}, Type: common.TypeUpload},
 		common.Form{},
 	},
 	{
 		"form", "test.db", false, "2", "foo",
-		"2023-03-10T11:45:00.000Z", "",
+		"2023-03-10T11:45:00.000Z", "", "",
 		common.Upload{},
 		common.Form{
 			Id: "1", Expire: "asap", Description: "none", Context: "foo",
-			Created: common.Timestamp{}},
+			Created: common.Timestamp{}, Type: common.TypeForm},
 	},
 }
 
@@ -112,6 +113,10 @@ func TestDboperation(t *testing.T) {
 			if tt.upload.Id != "" {
 				// set ts
 				ts, err := time.Parse(timeformat, tt.ts)
+				if err != nil {
+					t.Errorf("Could not parse time: " + err.Error())
+				}
+
 				tt.upload.Created = common.Timestamp{Time: ts}
 
 				// create new upload db object
@@ -145,7 +150,7 @@ func TestDboperation(t *testing.T) {
 				td.Cmp(t, response.Uploads[0], &tt.upload, tt.name)
 
 				// fetch list
-				response, err = db.List(tt.context, tt.filter, common.TypeUpload)
+				response, err = db.List(tt.context, tt.filter, tt.query, common.TypeUpload)
 				if err != nil {
 					t.Errorf("Could not fetch uploads list: " + err.Error())
 				}
@@ -162,7 +167,7 @@ func TestDboperation(t *testing.T) {
 				}
 
 				// fetch again, shall return empty
-				response, err = db.Get(tt.context, tt.id, common.TypeUpload)
+				_, err = db.Get(tt.context, tt.id, common.TypeUpload)
 				if err == nil {
 					t.Errorf("Could fetch upload object again although we deleted it")
 				}
@@ -171,6 +176,9 @@ func TestDboperation(t *testing.T) {
 			if tt.form.Id != "" {
 				// set ts
 				ts, err := time.Parse(timeformat, tt.ts)
+				if err != nil {
+					t.Errorf("Could not parse time: " + err.Error())
+				}
 				tt.form.Created = common.Timestamp{Time: ts}
 
 				// create new form db object
@@ -204,7 +212,7 @@ func TestDboperation(t *testing.T) {
 				td.Cmp(t, response.Forms[0], &tt.form, tt.name)
 
 				// fetch list
-				response, err = db.List(tt.context, tt.filter, common.TypeForm)
+				response, err = db.List(tt.context, tt.filter, tt.query, common.TypeForm)
 				if err != nil {
 					t.Errorf("Could not fetch forms list: " + err.Error())
 				}
@@ -221,7 +229,7 @@ func TestDboperation(t *testing.T) {
 				}
 
 				// fetch again, shall return empty
-				response, err = db.Get(tt.context, tt.id, common.TypeForm)
+				_, err = db.Get(tt.context, tt.id, common.TypeForm)
 				if err == nil {
 					t.Errorf("Could fetch form object again although we deleted it")
 				}

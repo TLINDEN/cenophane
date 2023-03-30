@@ -28,6 +28,10 @@
           </p>
         </div>
         <div class="mb-3 row">
+          <label class="col-sm-2 col-form-label">Description</label>
+          <label class="col-sm-10 col-form-label">{{ .Description}} </label>
+        </div>
+        <div class="mb-3 row">
           <label for="file" class="col-sm-2 col-form-label">Select</label>
           <div class="col-sm-10">
             <input type="file" class="form-control" id="file" name="uploads[]" multiple
@@ -71,8 +75,8 @@
              $('.statusMsg').html('');
              if(response.success){
                  $('#UploadForm')[0].reset();
-                 $('.statusMsg').html('<p class="alert alert-success">Your upload is available at <code>'
-                                      +response.uploads[0].url+'</code> for download</p>');
+                 $('.statusMsg').html('<p class="alert alert-success">Your upload is available for download.<!-- '
+                                      +response.uploads[0].url+' -->');
                  $('#UploadForm').hide();
              }else{
                $('.statusMsg').html('<p class="alert alert-danger">'+response.message+'</p>');

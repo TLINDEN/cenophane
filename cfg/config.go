@@ -62,18 +62,21 @@ type Config struct {
 	Network   string
 
 	// only settable via config
-	Apicontexts []Apicontext `koanf:"apicontext"`
+	Apicontexts []Apicontext `koanf:"apicontexts"`
 
 	// smtp settings
-	Mail Mailsettings `koanf:mail`
+	Mail Mailsettings `koanf:"mail"`
 
 	// Internals only
 	RegNormalizedFilename *regexp.Regexp
 	RegDuration           *regexp.Regexp
 	RegKey                *regexp.Regexp
 	RegEmail              *regexp.Regexp
-	CleanInterval         time.Duration
-	DefaultExpire         int
+	RegText               *regexp.Regexp
+	RegQuery              *regexp.Regexp
+
+	CleanInterval time.Duration
+	DefaultExpire int
 }
 
 func Getversion() string {
@@ -118,8 +121,9 @@ func (c *Config) ApplyDefaults() {
 	c.RegNormalizedFilename = regexp.MustCompile(`[^\w\d\-_\.]`)
 	c.RegDuration = regexp.MustCompile(`[^dhms0-9]`)
 	c.RegKey = regexp.MustCompile(`[^a-zA-Z0-9\-]`)
-	c.RegEmail = regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
-	c.RegEmail = regexp.MustCompile(`[^a-z0-9._%+\-@0-9]`)
+	c.RegEmail = regexp.MustCompile(`[^a-zA-Z0-9._%+\-@0-9]`)
+	c.RegText = regexp.MustCompile(`[^a-zA-Z0-9_%+\-@0-9 #/\.]`)
+	c.RegQuery = regexp.MustCompile(`[^a-zA-Z0-9_%+\-@0-9 #/\.\*\[\]\(\)\\]`)
 
 	c.CleanInterval = 10 * time.Second
 	c.DefaultExpire = 30 * 86400 // 1 month
