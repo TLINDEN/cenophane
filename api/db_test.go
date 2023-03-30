@@ -81,7 +81,7 @@ var dbtests = []struct {
 		"2023-03-10T11:45:00.000Z", "", "",
 		common.Upload{
 			Id: "1", Expire: "asap", File: "none", Context: "foo",
-			Created: common.Timestamp{}},
+			Created: common.Timestamp{}, Type: common.TypeUpload},
 		common.Form{},
 	},
 	{
@@ -90,7 +90,7 @@ var dbtests = []struct {
 		common.Upload{},
 		common.Form{
 			Id: "1", Expire: "asap", Description: "none", Context: "foo",
-			Created: common.Timestamp{}},
+			Created: common.Timestamp{}, Type: common.TypeForm},
 	},
 }
 
