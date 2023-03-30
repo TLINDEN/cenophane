@@ -33,6 +33,7 @@ import (
 
 type SetContext struct {
 	Apicontext string `json:"apicontext" form:"apicontext"`
+	Query      string `json:"query" form:"query"`
 }
 
 func UploadPost(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
@@ -66,7 +67,7 @@ func UploadPost(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// init upload obj
-	entry := &common.Upload{Id: id, Created: common.Timestamp{Time: time.Now()}}
+	entry := &common.Upload{Id: id, Created: common.Timestamp{Time: time.Now()}, Type: common.TypeUpload}
 
 	// retrieve the API Context name from the session
 	apicontext, err := SessionGetApicontext(c)
@@ -256,17 +257,23 @@ func UploadDelete(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 
 // returns the whole list + error code, no post processing by server
 func UploadsList(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
-	// fetch filter from body(json expected)
+	// fetch apifilter+query from body(json expected)
 	setcontext := new(SetContext)
 	if err := c.BodyParser(setcontext); err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"Unable to parse body: "+err.Error())
 	}
 
-	filter, err := common.Untaint(setcontext.Apicontext, cfg.RegKey)
+	apifilter, err := common.Untaint(setcontext.Apicontext, cfg.RegKey)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
-			"Invalid api context filter provided!")
+			"Invalid api context apifilter provided!")
+	}
+
+	query, err := common.Untaint(setcontext.Query, cfg.RegQuery)
+	if err != nil {
+		return JsonStatus(c, fiber.StatusForbidden,
+			"Invalid query provided!")
 	}
 
 	// retrieve the API Context name from the session
@@ -277,7 +284,7 @@ func UploadsList(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// get list
-	uploads, err := db.List(apicontext, filter, common.TypeUpload)
+	uploads, err := db.List(apicontext, apifilter, query, common.TypeUpload)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"Unable to list uploads: "+err.Error())

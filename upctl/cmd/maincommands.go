@@ -56,7 +56,7 @@ func ListCommand(conf *cfg.Config) *cobra.Command {
 	var listCmd = &cobra.Command{
 		Use:   "list [options] [file ..]",
 		Short: "List uploads",
-		Long:  `List uploads.`,
+		Long:  `List uploads`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// errors at this stage do not cause the usage to be shown
 			cmd.SilenceUsage = true
@@ -67,6 +67,7 @@ func ListCommand(conf *cfg.Config) *cobra.Command {
 
 	// options
 	listCmd.PersistentFlags().StringVarP(&conf.Apicontext, "apicontext", "", "", "Filter by given API context")
+	listCmd.PersistentFlags().StringVarP(&conf.Query, "query", "q", "", "Filter by given query regexp")
 
 	listCmd.Aliases = append(listCmd.Aliases, "ls")
 	listCmd.Aliases = append(listCmd.Aliases, "l")
@@ -87,7 +88,7 @@ func DeleteCommand(conf *cfg.Config) *cobra.Command {
 			// errors at this stage do not cause the usage to be shown
 			cmd.SilenceUsage = true
 
-			return lib.Delete(os.Stdout, conf, args)
+			return lib.Delete(os.Stdout, conf, args, common.TypeUpload)
 		},
 	}
 
@@ -101,7 +102,7 @@ func DescribeCommand(conf *cfg.Config) *cobra.Command {
 	var listCmd = &cobra.Command{
 		Use:   "describe [options] upload-id",
 		Long:  "Show detailed informations about an upload object.",
-		Short: `Describe an upload.`,
+		Short: `Describe an upload`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return errors.New("No id specified to delete!")
@@ -110,7 +111,7 @@ func DescribeCommand(conf *cfg.Config) *cobra.Command {
 			// errors at this stage do not cause the usage to be shown
 			cmd.SilenceUsage = true
 
-			return lib.Describe(os.Stdout, conf, args)
+			return lib.Describe(os.Stdout, conf, args, common.TypeUpload)
 		},
 	}
 
@@ -125,7 +126,7 @@ func DownloadCommand(conf *cfg.Config) *cobra.Command {
 	var listCmd = &cobra.Command{
 		Use:   "download [options] upload-id",
 		Long:  "Download the file associated with an upload object.",
-		Short: `Download a file.`,
+		Short: `Download a file`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return errors.New("No id specified to delete!")

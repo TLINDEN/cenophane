@@ -78,8 +78,8 @@ const formtemplate = `
              $('.statusMsg').html('');
              if(response.success){
                  $('#UploadForm')[0].reset();
-                 $('.statusMsg').html('<p class="alert alert-success">Your upload is available at <code>'
-                                      +response.uploads[0].url+'</code> for download</p>');
+                 $('.statusMsg').html('<p class="alert alert-success">Your upload is available for download.<!-- '
+                                      +response.uploads[0].url+' -->');
                  $('#UploadForm').hide();
              }else{
                $('.statusMsg').html('<p class="alert alert-danger">'+response.message+'</p>');

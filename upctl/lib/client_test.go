@@ -295,7 +295,7 @@ func TestDescribe(t *testing.T) {
 		var w bytes.Buffer
 		unit.route += unit.files[0]
 		Intercept(unit)
-		Check(t, unit, &w, Describe(&w, conf, unit.files))
+		Check(t, unit, &w, Describe(&w, conf, unit.files, common.TypeUpload))
 	}
 }
 
@@ -345,9 +345,9 @@ func TestDelete(t *testing.T) {
 
 	for _, unit := range tests {
 		var w bytes.Buffer
-		unit.route += unit.files[0] + "/"
+		unit.route += unit.files[0]
 		Intercept(unit)
-		Check(t, unit, &w, Delete(&w, conf, unit.files))
+		Check(t, unit, &w, Delete(&w, conf, unit.files, common.TypeUpload))
 	}
 }
 

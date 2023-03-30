@@ -20,6 +20,7 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 )
 
 // used to return to the api client
@@ -33,9 +34,15 @@ type Result struct {
 type Dbentry interface {
 	Getcontext(j []byte) (string, error)
 	Marshal() ([]byte, error)
+	MatchExpire(r *regexp.Regexp) bool
+	MatchDescription(r *regexp.Regexp) bool
+	MatchFile(r *regexp.Regexp) bool
+	MatchCreated(r *regexp.Regexp) bool
+	IsType(t int) bool
 }
 
 type Upload struct {
+	Type        int       `json:"type"`
 	Id          string    `json:"id"`
 	Expire      string    `json:"expire"`
 	File        string    `json:"file"`    // final filename (visible to the downloader)
@@ -61,6 +68,7 @@ type Form struct {
 	// that the upload handler is able to check if the form object has
 	// to be deleted immediately (if  its expire field has been set to
 	// asap)
+	Type        int       `json:"type"`
 	Id          string    `json:"id"`
 	Expire      string    `json:"expire"`
 	Description string    `json:"description"`
@@ -110,6 +118,52 @@ func (form Form) Marshal() ([]byte, error) {
 	}
 
 	return jsonentry, nil
+}
+
+func (upload Upload) MatchExpire(r *regexp.Regexp) bool {
+	return r.MatchString(upload.Expire)
+}
+
+func (upload Upload) MatchDescription(r *regexp.Regexp) bool {
+	return r.MatchString(upload.Description)
+}
+
+func (upload Upload) MatchCreated(r *regexp.Regexp) bool {
+	return r.MatchString(upload.Created.Time.String())
+}
+
+func (upload Upload) MatchFile(r *regexp.Regexp) bool {
+	return r.MatchString(upload.File)
+}
+
+func (form Form) MatchExpire(r *regexp.Regexp) bool {
+	return r.MatchString(form.Expire)
+}
+
+func (form Form) MatchDescription(r *regexp.Regexp) bool {
+	return r.MatchString(form.Description)
+}
+
+func (form Form) MatchCreated(r *regexp.Regexp) bool {
+	return r.MatchString(form.Created.Time.String())
+}
+
+func (form Form) MatchFile(r *regexp.Regexp) bool {
+	return false
+}
+
+func (upload Upload) IsType(t int) bool {
+	if upload.Type == t {
+		return true
+	}
+	return false
+}
+
+func (form Form) IsType(t int) bool {
+	if form.Type == t {
+		return true
+	}
+	return false
 }
 
 /*

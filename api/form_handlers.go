@@ -36,7 +36,7 @@ func FormCreate(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	var formdata common.Form
 
 	// init form obj
-	entry := &common.Form{Id: id, Created: common.Timestamp{Time: time.Now()}}
+	entry := &common.Form{Id: id, Created: common.Timestamp{Time: time.Now()}, Type: common.TypeForm}
 
 	// retrieve the API Context name from the session
 	apicontext, err := SessionGetApicontext(c)
@@ -149,6 +149,12 @@ func FormsList(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 			"Invalid api context filter provided!")
 	}
 
+	query, err := common.Untaint(setcontext.Query, cfg.RegQuery)
+	if err != nil {
+		return JsonStatus(c, fiber.StatusForbidden,
+			"Invalid query provided!")
+	}
+
 	// retrieve the API Context name from the session
 	apicontext, err := SessionGetApicontext(c)
 	if err != nil {
@@ -157,7 +163,7 @@ func FormsList(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	// get list
-	response, err := db.List(apicontext, filter, common.TypeForm)
+	response, err := db.List(apicontext, filter, query, common.TypeForm)
 	if err != nil {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"Unable to list forms: "+err.Error())

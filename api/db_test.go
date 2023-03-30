@@ -72,12 +72,13 @@ var dbtests = []struct {
 	context  string
 	ts       string
 	filter   string
+	query    string
 	upload   common.Upload
 	form     common.Form
 }{
 	{
 		"upload", "test.db", false, "1", "foo",
-		"2023-03-10T11:45:00.000Z", "",
+		"2023-03-10T11:45:00.000Z", "", "",
 		common.Upload{
 			Id: "1", Expire: "asap", File: "none", Context: "foo",
 			Created: common.Timestamp{}},
@@ -85,7 +86,7 @@ var dbtests = []struct {
 	},
 	{
 		"form", "test.db", false, "2", "foo",
-		"2023-03-10T11:45:00.000Z", "",
+		"2023-03-10T11:45:00.000Z", "", "",
 		common.Upload{},
 		common.Form{
 			Id: "1", Expire: "asap", Description: "none", Context: "foo",
@@ -149,7 +150,7 @@ func TestDboperation(t *testing.T) {
 				td.Cmp(t, response.Uploads[0], &tt.upload, tt.name)
 
 				// fetch list
-				response, err = db.List(tt.context, tt.filter, common.TypeUpload)
+				response, err = db.List(tt.context, tt.filter, tt.query, common.TypeUpload)
 				if err != nil {
 					t.Errorf("Could not fetch uploads list: " + err.Error())
 				}
@@ -211,7 +212,7 @@ func TestDboperation(t *testing.T) {
 				td.Cmp(t, response.Forms[0], &tt.form, tt.name)
 
 				// fetch list
-				response, err = db.List(tt.context, tt.filter, common.TypeForm)
+				response, err = db.List(tt.context, tt.filter, tt.query, common.TypeForm)
 				if err != nil {
 					t.Errorf("Could not fetch forms list: " + err.Error())
 				}

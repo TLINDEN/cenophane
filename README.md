@@ -236,6 +236,7 @@ Available Commands:
   delete      Delete an upload
   describe    Describe an upload.
   download    Download a file.
+  form        Form commands
   help        Help about any command
   list        List uploads
   upload      Upload files
@@ -268,13 +269,9 @@ The `endpoint` is  the **ephemerup** server running  somewhere and the
 
 ## TODO
 
-- also serve a html upload page
 - add metrics (as in https://github.com/ansrivas/fiberprometheus)
 - do not manually generate output urls, use fiber.GetRoute()
 - upd: https://docs.gofiber.io/guide/error-handling/ to always use json output
-- upctl: get rid of HandleResponse(), used only once anyway
-- add form so that public users can upload
-- use Writer for output.go so we can unit test the stuff in there
 - add (default by time!) sorting to list outputs, and add sort flag
 
 

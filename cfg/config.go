@@ -73,8 +73,10 @@ type Config struct {
 	RegKey                *regexp.Regexp
 	RegEmail              *regexp.Regexp
 	RegText               *regexp.Regexp
-	CleanInterval         time.Duration
-	DefaultExpire         int
+	RegQuery              *regexp.Regexp
+
+	CleanInterval time.Duration
+	DefaultExpire int
 }
 
 func Getversion() string {
@@ -120,7 +122,8 @@ func (c *Config) ApplyDefaults() {
 	c.RegDuration = regexp.MustCompile(`[^dhms0-9]`)
 	c.RegKey = regexp.MustCompile(`[^a-zA-Z0-9\-]`)
 	c.RegEmail = regexp.MustCompile(`[^a-zA-Z0-9._%+\-@0-9]`)
-	c.RegText = regexp.MustCompile(`[^a-zA-Z0-9._%+\-@0-9 #/\.]`)
+	c.RegText = regexp.MustCompile(`[^a-zA-Z0-9_%+\-@0-9 #/\.]`)
+	c.RegQuery = regexp.MustCompile(`[^a-zA-Z0-9_%+\-@0-9 #/\.\*\[\]\(\)\\]`)
 
 	c.CleanInterval = 10 * time.Second
 	c.DefaultExpire = 30 * 86400 // 1 month

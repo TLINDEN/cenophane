@@ -48,6 +48,7 @@ type Request struct {
 
 type ListParams struct {
 	Apicontext string `json:"apicontext"`
+	Query      string `json:"query"`
 }
 
 const Maxwidth = 12
@@ -216,7 +217,7 @@ func List(w io.Writer, c *cfg.Config, args []string, typ int) error {
 		rq = Setup(c, "/forms")
 	}
 
-	params := &ListParams{Apicontext: c.Apicontext}
+	params := &ListParams{Apicontext: c.Apicontext, Query: c.Query}
 	resp, err := rq.R.
 		SetBodyJsonMarshal(params).
 		Get(rq.Url)
@@ -239,9 +240,18 @@ func List(w io.Writer, c *cfg.Config, args []string, typ int) error {
 	return nil
 }
 
-func Delete(w io.Writer, c *cfg.Config, args []string) error {
+func Delete(w io.Writer, c *cfg.Config, args []string, typ int) error {
 	for _, id := range args {
-		rq := Setup(c, "/uploads/"+id+"/")
+		var rq *Request
+		caption := "Upload"
+
+		switch typ {
+		case common.TypeUpload:
+			rq = Setup(c, "/uploads/"+id)
+		case common.TypeForm:
+			rq = Setup(c, "/forms/"+id)
+			caption = "Form"
+		}
 
 		resp, err := rq.R.Delete(rq.Url)
 
@@ -253,20 +263,27 @@ func Delete(w io.Writer, c *cfg.Config, args []string) error {
 			return err
 		}
 
-		fmt.Fprintf(w, "Upload %s successfully deleted.\n", id)
+		fmt.Fprintf(w, "%s %s successfully deleted.\n", caption, id)
 	}
 
 	return nil
 }
 
-func Describe(w io.Writer, c *cfg.Config, args []string) error {
+func Describe(w io.Writer, c *cfg.Config, args []string, typ int) error {
 	if len(args) == 0 {
 		return errors.New("No id provided!")
 	}
 
+	var rq *Request
 	id := args[0] // we describe only 1 object
 
-	rq := Setup(c, "/uploads/"+id)
+	switch typ {
+	case common.TypeUpload:
+		rq = Setup(c, "/uploads/"+id)
+	case common.TypeForm:
+		rq = Setup(c, "/forms/"+id)
+	}
+
 	resp, err := rq.R.Get(rq.Url)
 
 	if err != nil {
