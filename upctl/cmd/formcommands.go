@@ -48,6 +48,7 @@ func FormCommand(conf *cfg.Config) *cobra.Command {
 	formCmd.AddCommand(FormListCommand(conf))
 	formCmd.AddCommand(FormDeleteCommand(conf))
 	formCmd.AddCommand(FormDescribeCommand(conf))
+	formCmd.AddCommand(FormModifyCommand(conf))
 
 	return formCmd
 }
@@ -66,14 +67,48 @@ func FormCreateCommand(conf *cfg.Config) *cobra.Command {
 	}
 
 	// options
-	formCreateCmd.PersistentFlags().StringVarP(&conf.Expire, "expire", "e", "", "Expire setting: asap or duration (accepted shortcuts: dmh)")
-	formCreateCmd.PersistentFlags().StringVarP(&conf.Description, "description", "D", "", "Description of the form")
-	formCreateCmd.PersistentFlags().StringVarP(&conf.Notify, "notify", "n", "", "Email address to get notified when consumer has uploaded files")
+	formCreateCmd.PersistentFlags().StringVarP(&conf.Expire, "expire", "e", "",
+		"Expire setting: asap or duration (accepted shortcuts: dmh)")
+	formCreateCmd.PersistentFlags().StringVarP(&conf.Description, "description", "D", "",
+		"Description of the form")
+	formCreateCmd.PersistentFlags().StringVarP(&conf.Notify, "notify", "n", "",
+		"Email address to get notified when consumer has uploaded files")
 
 	formCreateCmd.Aliases = append(formCreateCmd.Aliases, "add")
 	formCreateCmd.Aliases = append(formCreateCmd.Aliases, "+")
 
 	return formCreateCmd
+}
+
+func FormModifyCommand(conf *cfg.Config) *cobra.Command {
+	var formModifyCmd = &cobra.Command{
+		Use:   "modify [options] <id>",
+		Short: "Modify a form",
+		Long:  `Modify an existing form.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return cmd.Help()
+			}
+
+			// errors at this stage do not cause the usage to be shown
+			cmd.SilenceUsage = true
+
+			return lib.Modify(os.Stdout, conf, args, common.TypeForm)
+		},
+	}
+
+	// options
+	formModifyCmd.PersistentFlags().StringVarP(&conf.Expire, "expire", "e", "",
+		"Expire setting: asap or duration (accepted shortcuts: dmh)")
+	formModifyCmd.PersistentFlags().StringVarP(&conf.Description, "description", "D", "",
+		"Description of the form")
+	formModifyCmd.PersistentFlags().StringVarP(&conf.Notify, "notify", "n", "",
+		"Email address to get notified when consumer has uploaded files")
+
+	formModifyCmd.Aliases = append(formModifyCmd.Aliases, "mod")
+	formModifyCmd.Aliases = append(formModifyCmd.Aliases, "change")
+
+	return formModifyCmd
 }
 
 func FormListCommand(conf *cfg.Config) *cobra.Command {

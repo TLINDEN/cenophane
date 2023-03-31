@@ -80,7 +80,7 @@ func WriteExtended(w io.Writer, response *common.Response) {
 	for _, entry := range response.Uploads {
 		expire := prepareExpire(entry.Expire, entry.Created)
 		fmt.Fprintf(w, format, "Upload-Id", entry.Id)
-		fmt.Fprintf(w, format, "Description", entry.Id)
+		fmt.Fprintf(w, format, "Description", entry.Description)
 		fmt.Fprintf(w, format, "Expire", expire)
 		fmt.Fprintf(w, format, "Context", entry.Context)
 		fmt.Fprintf(w, format, "Created", entry.Created)

@@ -26,9 +26,26 @@ import (
 
 	"bytes"
 	"html/template"
+	"regexp"
 	"strings"
 	"time"
 )
+
+/*
+   Validate a fied by untainting it, modifies field value inplace.
+*/
+func untaintField(c *fiber.Ctx, orig *string, r *regexp.Regexp, caption string) error {
+	if len(*orig) != 0 {
+		nt, err := common.Untaint(*orig, r)
+		if err != nil {
+			return JsonStatus(c, fiber.StatusForbidden,
+				"Invalid "+caption+": "+err.Error())
+		}
+		*orig = nt
+	}
+
+	return nil
+}
 
 func FormCreate(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	id := uuid.NewString()
@@ -52,35 +69,25 @@ func FormCreate(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 			"bodyparser error : "+err.Error())
 	}
 
-	// post process expire
+	// post process inputdata
 	if len(formdata.Expire) == 0 {
 		entry.Expire = "asap"
 	} else {
-		ex, err := common.Untaint(formdata.Expire, cfg.RegDuration) // duration or asap allowed
-		if err != nil {
-			return JsonStatus(c, fiber.StatusForbidden,
-				"Invalid expire data: "+err.Error())
+		if err := untaintField(c, &formdata.Expire, cfg.RegDuration, "expire data"); err != nil {
+			return err
 		}
-		entry.Expire = ex
+		entry.Expire = formdata.Expire
 	}
 
-	if len(formdata.Notify) != 0 {
-		nt, err := common.Untaint(formdata.Notify, cfg.RegEmail)
-		if err != nil {
-			return JsonStatus(c, fiber.StatusForbidden,
-				"Invalid email address: "+err.Error())
-		}
-		entry.Notify = nt
+	if err := untaintField(c, &formdata.Notify, cfg.RegDuration, "email address"); err != nil {
+		return err
 	}
+	entry.Notify = formdata.Notify
 
-	if len(formdata.Description) != 0 {
-		des, err := common.Untaint(formdata.Description, cfg.RegText)
-		if err != nil {
-			return JsonStatus(c, fiber.StatusForbidden,
-				"Invalid description: "+err.Error())
-		}
-		entry.Description = des
+	if err := untaintField(c, &formdata.Description, cfg.RegDuration, "description"); err != nil {
+		return err
 	}
+	entry.Description = formdata.Description
 
 	// get url [and zip if there are multiple files]
 	returnUrl := strings.Join([]string{cfg.Url, "form", id}, "/")
@@ -192,7 +199,7 @@ func FormDescribe(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 
 	response, err := db.Get(apicontext, id, common.TypeForm)
-	if err != nil {
+	if err != nil || len(response.Forms) == 0 {
 		return JsonStatus(c, fiber.StatusForbidden,
 			"No form with that id could be found!")
 	}
@@ -222,17 +229,20 @@ func FormPage(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallexpire bool) error {
 
 	apicontext, err := SessionGetApicontext(c)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString("Unable to initialize session store from context:" + err.Error())
+		return c.Status(fiber.StatusInternalServerError).
+			SendString("Unable to initialize session store from context:" + err.Error())
 	}
 
 	response, err := db.Get(apicontext, id, common.TypeForm)
 	if err != nil || len(response.Forms) == 0 {
-		return c.Status(fiber.StatusForbidden).SendString("No form with that id could be found!")
+		return c.Status(fiber.StatusForbidden).
+			SendString("No form with that id could be found!")
 	}
 
 	t := template.New("form")
 	if t, err = t.Parse(cfg.Formpage); err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString("Unable to load form template: " + err.Error())
+		return c.Status(fiber.StatusInternalServerError).
+			SendString("Unable to load form template: " + err.Error())
 	}
 
 	// prepare upload url
@@ -241,9 +251,79 @@ func FormPage(c *fiber.Ctx, cfg *cfg.Config, db *Db, shallexpire bool) error {
 
 	var out bytes.Buffer
 	if err := t.Execute(&out, response.Forms[0]); err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString("Unable to render form template: " + err.Error())
+		return c.Status(fiber.StatusInternalServerError).
+			SendString("Unable to render form template: " + err.Error())
 	}
 
 	c.Set("Content-type", "text/html; charset=utf-8")
 	return c.Status(fiber.StatusOK).SendString(out.String())
+}
+
+func FormModify(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
+	var formdata common.Form
+
+	// retrieve the API Context name from the session
+	apicontext, err := SessionGetApicontext(c)
+	if err != nil {
+		return JsonStatus(c, fiber.StatusInternalServerError,
+			"Unable to initialize session store from context: "+err.Error())
+	}
+
+	id, err := common.Untaint(c.Params("id"), cfg.RegKey)
+	if err != nil {
+		return JsonStatus(c, fiber.StatusForbidden,
+			"Invalid id provided!")
+	}
+
+	// extract form data
+	if err := c.BodyParser(&formdata); err != nil {
+		return JsonStatus(c, fiber.StatusInternalServerError,
+			"bodyparser error : "+err.Error())
+	}
+
+	// post process input data
+	if err := untaintField(c, &formdata.Expire, cfg.RegDuration, "expire data"); err != nil {
+		return err
+	}
+
+	if err := untaintField(c, &formdata.Notify, cfg.RegDuration, "email address"); err != nil {
+		return err
+	}
+
+	if err := untaintField(c, &formdata.Description, cfg.RegDuration, "description"); err != nil {
+		return err
+	}
+
+	// lookup orig entry
+	response, err := db.Get(apicontext, id, common.TypeForm)
+	if err != nil || len(response.Forms) == 0 {
+		return JsonStatus(c, fiber.StatusForbidden,
+			"No form with that id could be found!")
+	}
+
+	form := response.Forms[0]
+
+	// modify fields
+	if formdata.Expire != "" {
+		form.Expire = formdata.Expire
+	}
+
+	if formdata.Notify != "" {
+		form.Notify = formdata.Notify
+	}
+
+	if formdata.Description != "" {
+		form.Description = formdata.Description
+	}
+
+	// run in foreground because we need the feedback here
+	if err := db.Insert(id, form); err != nil {
+		return JsonStatus(c, fiber.StatusForbidden,
+			"Failed to insert: "+err.Error())
+	}
+
+	res := &common.Response{Forms: []*common.Form{form}}
+	res.Success = true
+	res.Code = fiber.StatusOK
+	return c.Status(fiber.StatusOK).JSON(res)
 }
