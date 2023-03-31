@@ -328,3 +328,64 @@ func UploadDescribe(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 
 	return c.Status(fiber.StatusOK).JSON(response)
 }
+
+func UploadModify(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
+	var formdata common.Upload
+
+	// retrieve the API Context name from the session
+	apicontext, err := SessionGetApicontext(c)
+	if err != nil {
+		return JsonStatus(c, fiber.StatusInternalServerError,
+			"Unable to initialize session store from context: "+err.Error())
+	}
+
+	id, err := common.Untaint(c.Params("id"), cfg.RegKey)
+	if err != nil {
+		return JsonStatus(c, fiber.StatusForbidden,
+			"Invalid id provided!")
+	}
+
+	// extract form data
+	if err := c.BodyParser(&formdata); err != nil {
+		return JsonStatus(c, fiber.StatusInternalServerError,
+			"bodyparser error : "+err.Error())
+	}
+
+	// post process input data
+	if err := untaintField(c, &formdata.Expire, cfg.RegDuration, "expire data"); err != nil {
+		return err
+	}
+
+	if err := untaintField(c, &formdata.Description, cfg.RegDuration, "description"); err != nil {
+		return err
+	}
+
+	// lookup orig entry
+	response, err := db.Get(apicontext, id, common.TypeUpload)
+	if err != nil || len(response.Uploads) == 0 {
+		return JsonStatus(c, fiber.StatusForbidden,
+			"No upload with that id could be found!")
+	}
+
+	upload := response.Uploads[0]
+
+	// modify fields
+	if formdata.Expire != "" {
+		upload.Expire = formdata.Expire
+	}
+
+	if formdata.Description != "" {
+		upload.Description = formdata.Description
+	}
+
+	// run in foreground because we need the feedback here
+	if err := db.Insert(id, upload); err != nil {
+		return JsonStatus(c, fiber.StatusForbidden,
+			"Failed to insert: "+err.Error())
+	}
+
+	res := &common.Response{Uploads: []*common.Upload{upload}}
+	res.Success = true
+	res.Code = fiber.StatusOK
+	return c.Status(fiber.StatusOK).JSON(res)
+}

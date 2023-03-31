@@ -76,6 +76,11 @@ func Runserver(conf *cfg.Config, args []string) error {
 			return UploadDescribe(c, conf, db)
 		})
 
+		// modify
+		api.Put("/uploads/:id", auth, func(c *fiber.Ctx) error {
+			return UploadModify(c, conf, db)
+		})
+
 		// download w/o expire
 		api.Get("/uploads/:id/file", auth, func(c *fiber.Ctx) error {
 			return UploadFetch(c, conf, db)
@@ -100,6 +105,11 @@ func Runserver(conf *cfg.Config, args []string) error {
 		// info/describe
 		api.Get("/forms/:id", auth, func(c *fiber.Ctx) error {
 			return FormDescribe(c, conf, db)
+		})
+
+		// modify
+		api.Put("/forms/:id", auth, func(c *fiber.Ctx) error {
+			return FormModify(c, conf, db)
 		})
 	}
 

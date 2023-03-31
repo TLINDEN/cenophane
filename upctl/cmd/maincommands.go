@@ -146,3 +146,32 @@ func DownloadCommand(conf *cfg.Config) *cobra.Command {
 
 	return listCmd
 }
+
+func ModifyCommand(conf *cfg.Config) *cobra.Command {
+	var uploadModifyCmd = &cobra.Command{
+		Use:   "modify [options] <id>",
+		Short: "Modify an upload",
+		Long:  `Modify an existing upload.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return cmd.Help()
+			}
+
+			// errors at this stage do not cause the usage to be shown
+			cmd.SilenceUsage = true
+
+			return lib.Modify(os.Stdout, conf, args, common.TypeUpload)
+		},
+	}
+
+	// options
+	uploadModifyCmd.PersistentFlags().StringVarP(&conf.Expire, "expire", "e", "",
+		"Expire setting: asap or duration (accepted shortcuts: dmh)")
+	uploadModifyCmd.PersistentFlags().StringVarP(&conf.Description, "description", "D", "",
+		"Description of the upload")
+
+	uploadModifyCmd.Aliases = append(uploadModifyCmd.Aliases, "mod")
+	uploadModifyCmd.Aliases = append(uploadModifyCmd.Aliases, "change")
+
+	return uploadModifyCmd
+}

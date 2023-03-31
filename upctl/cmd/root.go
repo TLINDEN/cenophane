@@ -92,6 +92,9 @@ func Execute() {
 	rootCmd.AddCommand(DeleteCommand(&conf))
 	rootCmd.AddCommand(DescribeCommand(&conf))
 	rootCmd.AddCommand(DownloadCommand(&conf))
+	rootCmd.AddCommand(ModifyCommand(&conf))
+
+	// forms are being handled with its own subcommand
 	rootCmd.AddCommand(FormCommand(&conf))
 
 	err := rootCmd.Execute()

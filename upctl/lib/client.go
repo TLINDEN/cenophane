@@ -357,6 +357,43 @@ func Download(w io.Writer, c *cfg.Config, args []string) error {
 	return nil
 }
 
+func Modify(w io.Writer, c *cfg.Config, args []string, typ int) error {
+	id := args[0]
+	var rq *Request
+
+	// setup url, req.Request, timeout handling etc
+	switch typ {
+	case common.TypeUpload:
+		rq = Setup(c, "/uploads/"+id)
+		rq.R.
+			SetBody(&common.Upload{
+				Expire:      c.Expire,
+				Description: c.Description,
+			})
+	case common.TypeForm:
+		rq = Setup(c, "/forms/"+id)
+		rq.R.
+			SetBody(&common.Form{
+				Expire:      c.Expire,
+				Description: c.Description,
+				Notify:      c.Notify,
+			})
+	}
+
+	// actual put w/ settings
+	resp, err := rq.R.Put(rq.Url)
+
+	if err != nil {
+		return err
+	}
+
+	if err := HandleResponse(c, resp); err != nil {
+		return err
+	}
+
+	return RespondExtended(w, resp)
+}
+
 /**** Forms stuff ****/
 func CreateForm(w io.Writer, c *cfg.Config) error {
 	// setup url, req.Request, timeout handling etc
