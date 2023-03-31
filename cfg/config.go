@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-const Version string = "v0.0.1"
+const Version string = "v0.0.2"
 
 var VERSION string // maintained by -x
 
