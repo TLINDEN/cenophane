@@ -14,7 +14,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
-
 package api
 
 import (
@@ -86,7 +85,7 @@ func UploadPost(c *fiber.Ctx, cfg *cfg.Config, db *Db) error {
 	}
 	entry.Members = members
 
-	// extract auxilliary form data (expire field et al)
+	// extract auxiliary form data (expire field et al)
 	if err := c.BodyParser(&formdata); err != nil {
 		return JsonStatus(c, fiber.StatusInternalServerError,
 			"bodyparser error : "+err.Error())
