@@ -26,9 +26,13 @@ BRANCH    = $(shell git branch --show-current)
 COMMIT    = $(shell git rev-parse --short=8 HEAD)
 BUILD     = $(shell date +%Y.%m.%d.%H%M%S) 
 VERSION  := $(if $(filter $(BRANCH), development),$(version)-$(BRANCH)-$(COMMIT)-$(BUILD),$(version))
+ONMAIN   := $(if $(filter $(BRANCH), main),"main","")
 HAVE_POD := $(shell pod2text -h 2>/dev/null)
 HAVE_LINT:= $(shell golangci-lint -h 2>/dev/null)
 DAEMON   := ephemerupd
+CLIENT   := upctl
+DATE      = $(shell date +%Y-%m-%d)
+
 
 all: cmd/formtemplate.go lint buildlocal buildlocalctl
 
@@ -47,8 +51,14 @@ buildimage: clean
 	docker-compose --verbose build
 
 release:
-	./mkrel.sh $(DAEMON) $(version)
+ifdef BR_MAIN
+	git tag -a $(version) -m "$(version) released on $(DATE)"
+	git push origin --tags
+	./mkrel.sh $(DAEMON) $(CLIENT) $(version)
 	gh release create $(version) --generate-notes releases/*
+else
+	@echo "Cannot create release on branch $(BRANCH), checkout main and retry!"
+endif
 
 install: buildlocal
 	install -d -o $(UID) -g $(GID) $(PREFIX)/bin
