@@ -26,7 +26,7 @@ BRANCH    = $(shell git branch --show-current)
 COMMIT    = $(shell git rev-parse --short=8 HEAD)
 BUILD     = $(shell date +%Y.%m.%d.%H%M%S) 
 VERSION  := $(if $(filter $(BRANCH), development),$(version)-$(BRANCH)-$(COMMIT)-$(BUILD),$(version))
-ONMAIN   := $(if $(filter $(BRANCH), main),"main","")
+BR_MAIN  := $(if $(filter $(BRANCH), main),"main","")
 HAVE_POD := $(shell pod2text -h 2>/dev/null)
 HAVE_LINT:= $(shell golangci-lint -h 2>/dev/null)
 DAEMON   := ephemerupd
