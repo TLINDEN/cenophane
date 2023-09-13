@@ -44,9 +44,12 @@ for D in $DIST; do
     tarfile="releases/${daemon}-${os}-${arch}-${version}.tar.gz"
     set -x
 
-    GOOS=${os} GOARCH=${arch} go build -o ${binfile} -ldflags "-X 'github.com/tlinden/ephemerup/cfg.VERSION=${version}'"
+    GOOS=${os} GOARCH=${arch} CGO_LDFLAGS='-static' go build -tags osusergo,netgo -ldflags \
+        "-extldflags=-static -s -X 'github.com/tlinden/ephemerup/cfg.VERSION=${version}'" -o ${binfile}
+    #GOOS=${os} GOARCH=${arch} go build -o ${binfile} -ldflags "-X 'github.com/tlinden/ephemerup/cfg.VERSION=${version}'"
     cd $client
-    GOOS=${os} GOARCH=${arch} go build -o ../${clientfile} -ldflags "-X 'github.com/tlinden/ephemerup/upctl/cfg.VERSION=${version}'"
+    GOOS=${os} GOARCH=${arch} go build -o ../${clientfile} -ldflags \
+        "-X 'github.com/tlinden/ephemerup/upctl/cfg.VERSION=${version}'"
     cd -
     
     mkdir -p ${tardir}

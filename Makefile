@@ -45,7 +45,8 @@ buildlocalctl:
 	make -C upctl
 
 buildlocal:
-	go build -ldflags "-X 'github.com/tlinden/ephemerup/cfg.VERSION=$(VERSION)'" -o $(DAEMON)
+#	go build -ldflags "-X 'github.com/tlinden/ephemerup/cfg.VERSION=$(VERSION)'" -o $(DAEMON)
+	CGO_LDFLAGS='-static' go build -tags osusergo,netgo -ldflags "-extldflags=-static -s -X 'github.com/tlinden/ephemerup/cfg.VERSION=$(VERSION)'" -o $(DAEMON)
 
 buildimage: clean
 	docker-compose --verbose build
