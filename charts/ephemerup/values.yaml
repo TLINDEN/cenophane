@@ -29,8 +29,8 @@ logLevel: info
 
 ##
 image:
-  registry: docker.io
-  repository: tlinden/ephemerup
+  registry: ghcr.io/tlinden
+  repository: ephemerup
   tag: "latest"
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
@@ -71,7 +71,8 @@ config:
     server: "localhost"
     port: 25
     from: "root@localhost"
-    password: ""
+    ## required when using SMTP Auth
+    #password: ""
   ## context config, add more as needed
   apicontexts:
     - context: "root"
@@ -270,7 +271,7 @@ service:
   ## @param service.ports.http application service HTTP port
   ##
   ports:
-    http: 8090
+    http: 8080
   ## @param service.nodePorts.http Node ports to expose
   ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport
   ##
@@ -449,7 +450,7 @@ metrics:
     scrapeTimeout: "10s"
 
 storage:
-  # -- Persistent volume for backups, see `config.retention`
+  # -- Persistent volume for bolt database and uploads
   longTerm:
     name: "ephemerup-storage"
     spec:
@@ -462,15 +463,6 @@ storage:
   # -- Persistent volume for temporary files
   tmp:
     name: "ephemerup-tmp"
-    spec:
-      accessModes:
-        - ReadWriteOnce
-      resources:
-        requests:
-          storage: 10Gi
-      storageClassName: standard
-  restoreTmp:
-    name: "ephemerup-restore-tmp"
     spec:
       accessModes:
         - ReadWriteOnce

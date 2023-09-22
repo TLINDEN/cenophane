@@ -23,7 +23,9 @@ data:
       server = {{ .Values.config.mail.server | quote }}
       port = {{ .Values.config.mail.port | quote }}
       from = {{ .Values.config.mail.from | quote }}
+      {{- if .Values.config.password }}
       password = {{ .Values.config.password | quote }}
+      {{- end }}
     }
     apicontexts = [
     {{- range $context := .Values.config.apicontexts }}
@@ -33,4 +35,5 @@ data:
       }
     {{- end }}
     ]
+    storagedir = "/data"
 {{- end }}
