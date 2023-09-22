@@ -2,8 +2,8 @@ name: build-push-image
 
 on:
   push:
-    branches:
-      - 'development'
+    tags:
+      - 'v*'
 
 jobs:
   build-and-push-image:
@@ -25,4 +25,4 @@ jobs:
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         with:
           push: true
-          tags: ghcr.io/tlinden/ephemerup:latest
+          tags: ghcr.io/tlinden/ephemerup:${{ github.ref_name}}
