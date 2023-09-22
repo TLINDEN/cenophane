@@ -18,6 +18,7 @@ package api
 
 import (
 	"errors"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -130,6 +131,9 @@ func Runserver(conf *cfg.Config, args []string) error {
 			return FormPage(c, conf, db, shallExpire)
 		})
 
+		router.Get("/status", func(c *fiber.Ctx) error {
+			return Status(c, conf)
+		})
 	}
 
 	// setup cleaner
@@ -196,8 +200,8 @@ func SetupServer(conf *cfg.Config) *fiber.App {
 }
 
 /*
-   Wrapper to respond with proper json status, message and code,
-   shall be prepared and called by the handlers directly.
+Wrapper to respond with proper json status, message and code,
+shall be prepared and called by the handlers directly.
 */
 func JsonStatus(c *fiber.Ctx, code int, msg string) error {
 	success := true
@@ -214,7 +218,7 @@ func JsonStatus(c *fiber.Ctx, code int, msg string) error {
 }
 
 /*
-   Used for non json-aware handlers, called by server
+Used for non json-aware handlers, called by server
 */
 func SendResponse(c *fiber.Ctx, msg string, err error) error {
 	if err != nil {
