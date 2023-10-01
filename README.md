@@ -101,6 +101,14 @@ helm upgrade --install ephemerup tlinden/ephemerup --namespace ephemerup --creat
 
 Refer to the [chart documentation](https://github.com/TLINDEN/ephemerup/tree/main/charts/ephemerup) for help.
 
+For starters, create a minimal `values.yaml` like this one:
+```yaml
+image:
+  tag: "v0.0.3"
+``**
+
+**Please note that the helm chart doesn't deploy a loadbalancer, you need to do this yourself, if needed.**
+
 ### Build from source
 
 To build from source, you'll  need  a go  build  environment.
