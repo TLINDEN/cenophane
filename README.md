@@ -57,9 +57,21 @@ authorize. A user  can only manage uploads within  that context. Think
 
 ## Installation
 
-Since the software  is currently being developed, there  are no binary
-releases  available yet. You'll  need  a go  build  environment. Just  run
-`make` to build everything.
+### Deploy server using pre-built docker file
+
+A   ready   to   use   ephemerup  server   image   is   available   on
+[ghcr.io](https://ghcr.io/tlinden/ephemerup).   Supported  tags   are:
+`latest` or a github release tag.
+
+To try it locally with docker:
+
+```
+docker run -dp 8080:8080 --name eph \
+     ghcr.io/tlinden/ephemerup:latest \
+    -LogLevel=info
+```
+
+### Build Dockerfile
 
 There's a `Dockerfile` available for the server so you can build and run it using docker:
 ```
@@ -67,6 +79,35 @@ make buildimage
 docker-compose run ephemerup
 ```
 Then use the client to test it.
+
+### Install from binary package
+
+Go  to  the  [Releases](https://github.com/TLINDEN/ephemerup/releases)
+page and download the latest tarball  for your platform. Unpack it and
+execute `make install` inside the created directory.
+
+This installs both the server `ephemerupd` and the client `upctl`.
+
+If you  only need the client,  just grab the tarball  and extract just
+the client, copy it to your bin folder and you're good to go.
+
+### Deploy on Kubernetes using the Helm chart
+
+```
+helm repo add tlinden https://tlinden.github.io/ephemerup/
+helm repo update
+helm upgrade --install ephemerup tlinden/ephemerup --namespace ephemerup --create-namespace
+```
+
+Refer to the [chart documentation](https://github.com/TLINDEN/ephemerup/tree/main/charts/ephemerup) for help.
+
+### Build from source
+
+To build from source, you'll  need  a go  build  environment.
+
+Clone the git repo
+Just run `make` to build everything.
+
 
 ## Server Usage
 
