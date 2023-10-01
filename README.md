@@ -105,7 +105,7 @@ For starters, create a minimal `values.yaml` like this one:
 ```yaml
 image:
   tag: "v0.0.3"
-``**
+```
 
 **Please note that the helm chart doesn't deploy a loadbalancer, you need to do this yourself, if needed.**
 
